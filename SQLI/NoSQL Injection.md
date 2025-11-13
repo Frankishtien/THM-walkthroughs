@@ -141,6 +141,39 @@ Suppose you have a collection called `people` that contains different documents.
 
 
 
+<details>
+  <summary>NoSQL Injection</summary>
+
+
+
+  
+</details>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
