@@ -553,6 +553,203 @@
 
 
 
+🔭 يعني إيه Monitoring the Perimeter عمليًا؟
+--------------------------------------------
+
+مش مجرد إن فيه Firewall شغال...\
+لا، ده معناه:
+
+-   📜 **تقرأ Logs**
+
+-   🔎 **تدور على Patterns**
+
+-   🧠 **تفهم السلوك الطبيعي**
+
+-   🚨 **تلقط الغلط بسرعة**
+
+> المهاجم دايمًا يبدأ من البيريميتر\
+> وإنت دايمًا تبدأ التحقيق من هنا
+
+* * * * *
+
+🎯 أهداف مراقبة الـ Perimeter
+-----------------------------
+
+كمحلل أمن، إنت بتراقب عشان:
+
+1️⃣ تكتشف الهجوم بدري\
+2️⃣ تعرف فيه Service مكشوفة بالغلط\
+3️⃣ تمسك C2 أو Data Exfiltration\
+4️⃣ تمنع المهاجم قبل ما يدخل جوه
+
+* * * * *
+
+🧪 السيناريوهات (واحد واحد)
+===========================
+
+* * * * *
+
+🧨 Scenario 1: Port Scanning
+----------------------------
+
+### 🔍 اللوج بيقول إيه؟
+
+`203.0.113.10 ->  10.0.0.20:21  203.0.113.10 ->  10.0.0.20:22  203.0.113.10 ->  10.0.0.20:23  203.0.113.10 ->  10.0.0.20:25  203.0.113.10 ->  10.0.0.20:53  `
+
+### 🧠 التحليل:
+
+-   نفس الـ IP
+
+-   بورتات مختلفة
+
+-   في وقت قصير
+
+-   أغلبها BLOCK
+
+### 🧾 Verdict:
+
+✅ **Port Scan**
+
+📌 المهاجم بيقول:
+
+> "خليني أشوف إيه فاتح"
+
+📌 إنت كمحلل:
+
+> الحمد لله الـ Firewall شغال\
+> بس الـ IP ده لازم يتحط Watch / Blocklist
+
+* * * * *
+
+🌐 Scenario 2: Web Server Attack (WAF)
+--------------------------------------
+
+### 🔍 اللوج:
+
+`attack_type="XSS"  attack_type="Directory Traversal"  attack_type="SQL Injection"  `
+
+### 🧠 التحليل:
+
+-   ده مش Traffic عادي
+
+-   ده هجوم Web واضح
+
+-   أدوات أو Manual Testing
+
+### الفرق هنا؟
+
+🔥 **WAF ذكي**
+
+-   مش بس Block
+
+-   بيقولك *ليه* اتمنع
+
+### 🧾 Verdict:
+
+🚨 **Active Web Attack**
+
+📌 ده مش False Positive\
+📌 ده حد بيهاجم موقعك فعليًا
+
+* * * * *
+
+🔐 Scenario 3: VPN Brute Force
+------------------------------
+
+### 🔍 اللوج:
+
+`FAILED_AUTH user  'admin' FAILED_AUTH user  'guest' FAILED_AUTH user  'user'  `
+
+### 🧠 التحليل:
+
+-   يوزرات عامة
+
+-   محاولات كتير
+
+-   وقت قصير
+
+### الحاجة المهمة:
+
+فيه SUCCESS_AUTH\
+بس:
+
+-   دي Users حقيقيين
+
+-   IPs مختلفة
+
+-   طبيعي
+
+### 🧾 Verdict:
+
+🚨 **Brute Force Attack**
+
+📌 الحل:
+
+-   Block IP
+
+-   Rate Limiting
+
+-   MFA
+
+-   Alert عالي الخطورة
+
+
+
+
+| Pattern                  | معناه             |
+| ------------------------ | ----------------- |
+| نفس IP → بورتات كتير     | Port Scan         |
+| نفس IP → نفس الخدمة      | Brute Force       |
+| Traffic كل 30 / 60 ثانية | Malware Beaconing |
+| Data كبيرة طالعة برا     | Data Exfiltration |
+
+
+---
+----
+----
+
+
+
+
+
+
+
+
+```ruby
+cat firewall_logs.txt | grep BLOCK
+```
+
+<img width="1105" height="569" alt="image" src="https://github.com/user-attachments/assets/64166a1d-38e9-42a3-8cb6-bf29e1ba299b" />
+
+<img width="1605" height="149" alt="image" src="https://github.com/user-attachments/assets/c8621918-840a-464c-b74e-e652db3b6d14" />
+
+---
+
+<img width="1581" height="140" alt="image" src="https://github.com/user-attachments/assets/ceec3555-ddf4-41e2-a9e4-241b6d22e4ff" />
+
+
+```
+head waf_logs.txt | grep BLOCK
+```
+
+<img width="1615" height="476" alt="image" src="https://github.com/user-attachments/assets/382d9c5a-c7ff-4d20-9df8-e0e14804b504" />
+
+---
+
+<img width="1569" height="141" alt="image" src="https://github.com/user-attachments/assets/16226873-4059-4a4f-bec6-6f4c4eec04d1" />
+
+
+```
+cat vpn_logs.txt | grep FAILED
+grep -c "FAILED" vpn_logs.txt
+```
+
+<img width="1267" height="601" alt="image" src="https://github.com/user-attachments/assets/c9ca78ab-8313-4ba8-8248-ca4f1c55ec10" />
+
+---
+
+<img width="1581" height="145" alt="image" src="https://github.com/user-attachments/assets/3397d1a0-1c07-49c8-9cc6-986e31d12dd2" />
+
 
 
 
@@ -570,7 +767,72 @@
 
 
 
+<details>
+  <summary>Perimeter Logs: Investigating the Breach</summary>
 
+
+```
+cat firewall.log | grep “BLOCK” | cut -d’ ‘ -f5 | cut -d: -f1 | sort -nr | uniq -c
+```
+
+<img width="840" height="132" alt="image" src="https://github.com/user-attachments/assets/025a6841-0e38-4abd-b4eb-fde576325071" />
+
+---
+
+```
+cat vpn_auth.log | grep 203.0.113.45
+```
+
+<img width="1358" height="237" alt="image" src="https://github.com/user-attachments/assets/6eba867c-65e4-464d-8fd8-10f971753445" />
+
+----
+
+<img width="1293" height="400" alt="image" src="https://github.com/user-attachments/assets/2dec27b0-320f-46bd-9bd6-ed6b1744a5ab" />
+
+
+
+---
+
+```
+cat firewall.log | grep “203.0.113.45” | grep “ALLOW” | head
+```
+
+<img width="842" height="131" alt="image" src="https://github.com/user-attachments/assets/79dd137b-191a-49b6-8eaf-73f6c14eca55" />
+
+---
+
+```
+cat ids_alerts.log | grep C2 | head
+```
+
+
+<img width="1919" height="336" alt="image" src="https://github.com/user-attachments/assets/65bd4e87-905d-4920-b7b9-9adedc762c32" />
+
+
+---
+
+```
+cat ids_alerts.log | grep -n “10.0.0.60” | cut -d’ ‘ -f6,7,8,9,10,19,22,23 | head -n 15
+```
+
+
+<img width="528" height="122" alt="image" src="https://github.com/user-attachments/assets/77a24d66-76c9-4ac3-b35e-e29fa046b929" />
+
+
+---
+
+
+```
+cat firewall.log | grep “198.51.100.77” | cut -d’ ‘ -f5,6,7 | uniq | sort
+```
+
+
+<img width="574" height="159" alt="image" src="https://github.com/user-attachments/assets/f065626f-36a5-416f-83f3-9e64921cbe2d" />
+
+
+
+  
+</details>
 
 
 
