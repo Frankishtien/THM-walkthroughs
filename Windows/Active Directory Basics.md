@@ -336,6 +336,46 @@ Windows بيعملها لوحده:
 
 
 
+<details>
+  <summary>Managing Users in AD</summary>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+</details>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
