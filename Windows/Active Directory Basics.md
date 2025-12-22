@@ -340,16 +340,73 @@ Windows بيعملها لوحده:
   <summary>Managing Users in AD</summary>
 
 
+<img width="1073" height="796" alt="image" src="https://github.com/user-attachments/assets/57275abe-7ac7-48d9-87cf-26843330f03b" />
+
+<img width="1198" height="585" alt="image" src="https://github.com/user-attachments/assets/392dc19e-3ab7-4064-8534-6be84611466f" />
+
+<img width="941" height="551" alt="image" src="https://github.com/user-attachments/assets/0d520090-c10d-4a61-b213-a4265f214103" />
+
+<img width="667" height="444" alt="image" src="https://github.com/user-attachments/assets/8ad345d5-01b5-4397-b4f0-4ab6b78e0e88" />
+
+<img width="1066" height="642" alt="image" src="https://github.com/user-attachments/assets/0399e9d9-2088-425f-bf26-4239b8883922" />
 
 
 
 
 
+----
 
 
 
 
+<img width="907" height="557" alt="image" src="https://github.com/user-attachments/assets/8fce64de-10d3-47eb-864e-dbab1f4218c1" />
 
+<img width="1136" height="619" alt="image" src="https://github.com/user-attachments/assets/005ba90f-3563-4adf-b5cb-1bed937fc5ee" />
+
+
+> ### Now phillip can change password of users in sales put he can't open active directory so he will chane it from powershell and will force this user to change password after login
+
+
+
+
+```
+rdesktop 10.64.183.136 -u phillip -p Claire2008
+```
+
+
+
+
+<img width="1700" height="826" alt="image" src="https://github.com/user-attachments/assets/f3f5782d-2226-4b4e-973d-9764f0995ba2" />
+
+<img width="1652" height="785" alt="image" src="https://github.com/user-attachments/assets/d5369f82-641f-48d3-b308-4017b3059f78" />
+
+---
+
+```
+Set-ADAccountPassword sophie -Reset -NewPassword (Read-Host -AsSecureString -Prompt 'New Password') -Verbose
+Set-ADUser -ChangePasswordAtLogon $true -Identity sophie -Verbose
+```
+
+
+<img width="1058" height="210" alt="image" src="https://github.com/user-attachments/assets/f39f407e-3a4f-414c-bd64-9c9355677415" />
+
+```
+Hello@123
+```
+
+```
+rdesktop 10.64.183.136 -u Sophie -p Hello@123 
+```
+
+
+
+
+<img width="1547" height="717" alt="image" src="https://github.com/user-attachments/assets/6ca4cb3f-f21a-42d8-8b9f-41a6e203785c" />
+
+
+<img width="1356" height="637" alt="image" src="https://github.com/user-attachments/assets/3a09f18c-642b-4a8c-a10b-a719ce62be8f" />
+
+<img width="1323" height="712" alt="image" src="https://github.com/user-attachments/assets/772465d9-63e3-4947-b2ae-f99701f9ac29" />
 
 
 
