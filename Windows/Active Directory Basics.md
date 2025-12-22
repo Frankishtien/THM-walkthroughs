@@ -340,6 +340,192 @@ Windows بيعملها لوحده:
   <summary>Managing Users in AD</summary>
 
 
+
+
+* * * * *
+
+1️⃣ حذف OU زيادة (ليه مش راضية تتحذف؟)
+--------------------------------------
+
+### ليه الـ OU مش بتتحذف؟
+
+Windows عامل حماية افتراضية اسمها:
+
+> **Protect object from accidental deletion**
+
+عشان تحميك من كارثة إنك تمسح OU بالغلط.
+
+* * * * *
+
+### الحل ✔️
+
+1.  افتح **Active Directory Users and Computers**
+
+2.  من فوق:
+
+    `View → Advanced Features ✅ `
+
+3.  كليك يمين على الـ OU الزيادة
+
+4.  **Properties → Object**
+
+5.  شيل علامة الصح من:
+
+    `Protect object  from accidental deletion `
+
+6.  OK → Delete
+
+⚠️ تحذير:
+
+-   أي Users / Groups / OUs جوه الـ OU ده → هيتحذفوا
+
+* * * * *
+
+2️⃣ تعديل المستخدمين حسب Org Chart
+----------------------------------
+
+بعد حذف الـ OU:
+
+-   راجع كل Department
+
+-   اعمل:
+
+    -   Create Users ناقصين
+
+    -   Delete Users زيادة
+
+📌 ده مهم جدًا في الحياة العملية:
+
+-   Users زيادة = Attack Surface أكبر
+
+-   حسابات قديمة = كنز للمهاجم
+
+* * * * *
+
+3️⃣ Delegation (ليه مهمة؟)
+--------------------------
+
+مش كل حاجة لازم Domain Admin يعملها.
+
+### Delegation = أقل صلاحية تؤدي الغرض
+
+(Principle of Least Privilege)
+
+* * * * *
+
+السيناريو:
+----------
+
+Phillip مسؤول IT Support\
+→ محتاج:
+
+-   Reset Passwords
+
+-   بس **مش Domain Admin**
+
+* * * * *
+
+4️⃣ تفويض Phillip على Sales OU
+------------------------------
+
+### الخطوات:
+
+1.  كليك يمين على:
+
+    `OU = Sales `
+
+2.  **Delegate Control**
+
+3.  Add user:
+
+    `phillip → Check  Names → OK  `
+
+4.  اختار:
+
+    `Reset  user passwords and force password change at next logon `
+
+5.  Next → Finish
+
+🎉 كده Phillip يقدر:
+
+-   يغير باسورد
+
+-   بس **داخل Sales فقط**
+
+* * * * *
+
+5️⃣ تسجيل الدخول بحساب Phillip
+------------------------------
+
+### RDP:
+
+`Username: THM\phillip  Password: Claire2008  `
+
+⚠️ مهم جدًا:\
+لازم تكتب:
+
+`THM\phillip`
+
+مش بس phillip
+
+* * * * *
+
+6️⃣ ليه مش ينفع ADUC؟
+---------------------
+
+Phillip **مش عنده صلاحية** يفتح Active Directory Users and Computers\
+وده المطلوب 👌
+
+الحل؟\
+👉 **PowerShell**
+
+* * * * *
+
+7️⃣ Reset Password لسوفي (Sophie)
+---------------------------------
+
+### الأمر:
+
+`Set-ADAccountPassword sophie -Reset  -NewPassword (Read-Host  -AsSecureString  -Prompt  'New Password') -Verbose  `
+
+-   هيطلب منك باسورد جديد
+
+-   مش هيظهر على الشاشة
+
+* * * * *
+
+8️⃣ إجبار Sophie تغيّر الباسورد
+-------------------------------
+
+عشان متفضلش تستخدم باسورد أنت عارفه:
+
+`Set-ADUser  -ChangePasswordAtLogon  $true  -Identity sophie -Verbose  `
+
+🔐 دي Best Practice أمنية جدًا
+
+* * * * *
+
+9️⃣ تسجيل الدخول بحساب Sophie
+-----------------------------
+
+### RDP:
+
+`Username: THM\sophie  Password: (الباسورد الجديد)  `
+
+-   هيطلب تغيير الباسورد أول Login
+
+-   بعد الدخول:\
+    👉 Desktop → **FLAG 🚩**
+
+
+
+
+
+
+
+
+
+
 <img width="1073" height="796" alt="image" src="https://github.com/user-attachments/assets/57275abe-7ac7-48d9-87cf-26843330f03b" />
 
 <img width="1198" height="585" alt="image" src="https://github.com/user-attachments/assets/392dc19e-3ab7-4064-8534-6be84611466f" />
@@ -412,6 +598,267 @@ rdesktop 10.64.183.136 -u Sophie -p Hello@123
 
   
 </details>
+
+
+
+
+
+
+
+<details>
+  <summary>Managing Computers in AD</summary>
+
+
+
+
+🧠 الفكرة الأساسية
+------------------
+
+بشكل افتراضي:
+
+-   أي جهاز يدخل الدومين
+
+-   **مش DC**\
+    ➡️ يتحط في Container اسمه **Computers**
+
+وده **وحش جدًا أمنيًا وإداريًا**.
+
+ليه؟
+
+-   Servers ≠ User PCs
+
+-   سياسات مختلفة
+
+-   مخاطرة إن سياسات غلط تتطبق
+
+* * * * *
+
+❌ ليه Computers Container مشكلة؟
+--------------------------------
+
+-   مش OU → **ماينفعش تطبق GPOs بمرونة**
+
+-   كل الأجهزة متلخبطة:
+
+    -   Laptops
+
+    -   PCs
+
+    -   Servers
+
+-   صعب تحكم:
+
+    -   USB
+
+    -   RDP
+
+    -   Admin rights
+
+    -   Updates
+
+* * * * *
+
+✅ الحل الصح (Best Practice)
+---------------------------
+
+تقسم الأجهزة حسب **وظيفتها**.
+
+أقل تقسيم محترم:
+
+### 1️⃣ Workstations
+
+أجهزة المستخدمين:
+
+-   PCs
+
+-   Laptops
+
+📌 خصائصها:
+
+-   Users عاديين
+
+-   Browsing
+
+-   Email
+
+-   Office
+
+🔐 قواعد أمنية:
+
+-   ممنوع Admin login
+
+-   USB محدود
+
+-   Hardening عالي
+
+* * * * *
+
+### 2️⃣ Servers
+
+أجهزة بتقدم Services:
+
+-   File Server
+
+-   Web Server
+
+-   DB Server
+
+📌 خصائصها:
+
+-   Access محدود
+
+-   Admins بس
+
+-   سياسات مختلفة تمامًا
+
+* * * * *
+
+### 3️⃣ Domain Controllers
+
+-   أهم أجهزة في الدومين
+
+-   فيها:
+
+    -   Password Hashes
+
+    -   Kerberos Keys
+
+🔴 Windows أصلاً عاملهم OU لوحدهم\
+**ما تلمسهمش**
+
+* * * * *
+
+🏗️ المطلوب تعمله في المهمة
+---------------------------
+
+### إنشاء OU جديدة
+
+تحت:
+
+```
+thm.local  
+```
+
+اعمل:
+
+```
+OU = Workstations
+OU = Servers
+```
+
+* * * * *
+
+✋ ليه تحت Root؟
+---------------
+
+عشان:
+
+-   سياسات عامة
+
+-   Hierarchy واضح
+
+-   GPO inheritance مظبوط
+
+* * * * *
+
+🧱 الشكل النهائي
+----------------
+
+```
+thm.local
+  ├── Workstations
+  ├── Servers
+  ├── Domain Controllers
+  ├── THM
+  │   ├── IT
+  │   ├── Sales
+  │   ├── Marketing
+  │   └── ... 
+
+```
+
+* * * * *
+
+🔄 نقل الأجهزة
+--------------
+
+من:
+
+`Computers  `
+
+### نقل:
+
+-   PCs & Laptops → **Workstations**
+
+-   Servers → **Servers**
+
+💡 كليك يمين → Move
+
+* * * * *
+
+🎯 ليه ده مهم أمنيًا؟
+---------------------
+
+### بعد التقسيم تقدر:
+
+-   تطبق GPO مختلف لكل نوع
+
+-   تمنع:
+
+    -   Admin logon على Workstations
+
+    -   USB
+
+-   تفصل Updates
+
+-   تمنع Lateral Movement
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<img width="1100" height="413" alt="image" src="https://github.com/user-attachments/assets/9699c74f-75c1-448e-86af-06f61562bffc" />
+
+
+---
+
+<img width="1210" height="772" alt="image" src="https://github.com/user-attachments/assets/0da2e311-e3b5-4aee-9f18-899fdbba1a7a" />
+
+<img width="693" height="429" alt="image" src="https://github.com/user-attachments/assets/0ea9bd60-278e-4870-a86d-0aba9a5f454d" />
+
+
+MOVE 
+
+<img width="1197" height="624" alt="image" src="https://github.com/user-attachments/assets/f68e15b9-ea0b-4db2-8c5b-2bd9fc27638d" />
+
+<img width="976" height="551" alt="image" src="https://github.com/user-attachments/assets/457528e8-21e4-4f93-b994-69a09fa188af" />
+
+<img width="1061" height="599" alt="image" src="https://github.com/user-attachments/assets/c8c0064f-8b56-4727-80cc-75c8fe5d35d4" />
+
+<img width="964" height="633" alt="image" src="https://github.com/user-attachments/assets/f5d33041-f6f8-473b-a1b4-7a25907de717" />
+
+
+  
+</details>
+
+
+
+
+
+
 
 
 
