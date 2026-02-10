@@ -1,4 +1,4 @@
-<img width="1597" height="688" alt="image" src="https://github.com/user-attachments/assets/bc8bb0e6-aa52-402d-bfdf-075320365472" /><img width="1597" height="688" alt="image" src="https://github.com/user-attachments/assets/8af6e765-d16a-4c46-9579-6e3bd7b78758" /><img width="1332" height="195" alt="image" src="https://github.com/user-attachments/assets/bb3c5f46-0915-4fbf-bc0d-21f0a9679641" /># JWT Security
+# JWT Security
 
 <img width="1902" height="357" alt="image" src="https://github.com/user-attachments/assets/47163caa-6e2c-41d2-ae67-0ebba4ebf141" />
 
