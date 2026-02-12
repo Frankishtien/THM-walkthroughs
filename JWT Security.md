@@ -1,4 +1,4 @@
-<img width="1319" height="200" alt="image" src="https://github.com/user-attachments/assets/32408917-1edc-4129-80f3-faf536a9705b" /># JWT Security
+# JWT Security
 
 <img width="1902" height="357" alt="image" src="https://github.com/user-attachments/assets/47163caa-6e2c-41d2-ae67-0ebba4ebf141" />
 
