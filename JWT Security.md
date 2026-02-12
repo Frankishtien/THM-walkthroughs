@@ -1,4 +1,4 @@
-# JWT Security
+<img width="1319" height="200" alt="image" src="https://github.com/user-attachments/assets/32408917-1edc-4129-80f3-faf536a9705b" /># JWT Security
 
 <img width="1902" height="357" alt="image" src="https://github.com/user-attachments/assets/47163caa-6e2c-41d2-ae67-0ebba4ebf141" />
 
@@ -770,6 +770,17 @@ access_token = jwt.encode(payload, self.secret, algorithm="HS256")
 
 
 
+```
+curl -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InVzZXIiLCJhZG1pbiI6MX0.ko7EQiATQQzrQPwRO8ZTY37pQWGLPZWEvdWH0tVDNPU
+' http://10.65.159.101/api/v1.0/example6?username=admin
+```
+
+
+<img width="1323" height="233" alt="image" src="https://github.com/user-attachments/assets/85a3826d-57db-44d5-88f8-44669336aed6" />
+
+
+  
+</details>
 
 
 
@@ -778,23 +789,282 @@ access_token = jwt.encode(payload, self.secret, algorithm="HS256")
 
 
 
+<details>
+  <summary>Cross-Service Relay Attacks</summary>
 
 
 
 
+The last common misconfiguration we will review is a Cross-Service misconfiguration. As mentioned before, JWTs are often used in systems with a centralised authentication system that serves multiple applications. However, in some cases, we may want to restrict which applications are accessed with a JWT, especially when there are claims that should only be valid for certain applications. This can be done by using the audience claim. However, if the audience claim isn't correctly enforced, a Cross-Service Relay attack can be executed to perform a privilege escalation attack.
+
+#### `The Audience Claim`
+
+JWTs can have an audience claim. In cases where a single authentication system serves multiple applications, the audience claim can indicate which application the JWT is intended for. However, the enforcement of this audience claim has to occur on the application itself, not the authentication server. If this claim is not verified, as the JWT itself is still regarded as valid through signature verification, it can have unintended consequences.
+
+An example of this is if a user has admin privileges or a higher role on a certain application. The JWT allocated to the user usually has a claim that indicates this, such as `"admin" : true`. However, that same user is perhaps not an admin on a different application served by the same authentication system. If the audience claim is not verified on this second application, which also makes use of its admin claim, the server may mistakenly believe that the user has admin privileges. This is called a Cross-Service Relay attack, as shown in the animation below:
+
+
+<img width="1082" height="787" alt="image" src="https://github.com/user-attachments/assets/5ca883fd-9412-47e2-8bad-b556a95632d2" />
+
+
+Let's take a look at a practical example.
+
+**Practical Example 7\
+**
+
+For this last practical example, there are two API endpoints namely `example7_appA` and `example7_appB`. You can use the same GET request you made in the previous examples to recover the flag, but you will need to point it to these endpoints. Furthermore, for authentication, you now also have to include the `"application" : "appX"` data value in the login request made to `example7`. Use the following steps to perform the example:
+
+1.  Authenticate to `example7` using the following data segment: `'{ "username" : "user", "password" : "password7", "application" : "appA"}'`. You will notice that an audience claim is added, but that you are not an admin.
+
+2.  Use this token in both the admin and user requests you make to `example7_appA` and `example7_appB`. You will notice that while appA accepts the token, you are not an admin, and appB does not accept the token as the audience is incorrect.
+3.  Authenticate to `example7` using the following data segment: `'{ "username" : "user", "password" : "password7", "application" : "appB"}'`. You will notice that an audience claim is added again and you are an admin this time.
+4.  Use this token again to verify yourself on both applications and see what happens.
+
+You can use this to now recover your flag.
+
+**The Development Mistake**
+
+The key issue is that the audience claim is not being verified on appA. This can be either because audience claim verification has been turned off or the audience scope has been set too wide.
+
+**The Fix**
+
+The audience claim should be verified when the token is decoded. This can be done as shown in the example below:
+
+```
+payload = jwt.decode(token, self.secret, audience=["appA"], algorithms="HS256")
+```
+
+
+---
+
+
+<details>
+  <summary>explan=================</summary>
 
 
 
+🔥 Cross‑Service JWT Misconfiguration (Audience Claim)
+======================================================
+
+الفكرة الأساسية
+---------------
+
+في شركات كتير:
+
+-   عندها **Authentication Server واحد**
+
+-   بيطلع JWTs
+
+-   وبيخدم **أكتر من تطبيق**\
+    مثال:
+
+    -   appA (User Portal)
+
+    -   appB (Admin / Internal Tool)
+
+عشان كده اتعمل **claim اسمه `aud` (Audience)**\
+بيقول:
+
+> التوكن ده معمول لمين؟
+
+* * * * *
+
+🧠 المشكلة بتحصل إزاي؟
+----------------------
+
+لو **التطبيق نفسه** ماعملش تحقق من `aud`\
+والتوكن:
+
+-   توقيعه صحيح ✔️
+
+-   فيه `admin: true` ✔️
+
+👉 التطبيق هيصدق التوكن حتى لو معمول لتطبيق تاني\
+وده اسمه:
+
+> **Cross‑Service Relay Attack**
+
+* * * * *
+
+🧪 سيناريو عملي (ببساطة)
+------------------------
+
+### 🔹 التطبيقين:
+
+| التطبيق | صلاحياتك |
+| --- | --- |
+| appA | User عادي ❌ Admin |
+| appB | Admin ✅ |
+
+* * * * *
+
+### 🧩 الخطوة 1 -- Login على appA
+
+`{
+  "username": "user",
+  "password": "password7",
+  "application": "appA"
+}`
+
+النتيجة:
+
+`{
+  "aud": "appA",
+  "admin": false
+}`
+
+✔️ التوكن شغال على appA\
+❌ مش Admin\
+❌ appB يرفضه (aud غلط)
+
+* * * * *
+
+### 🧩 الخطوة 2 -- Login على appB
+
+`{
+  "username": "user",
+  "password": "password7",
+  "application": "appB"
+}`
+
+النتيجة:
+
+`{
+  "aud": "appB",
+  "admin": true
+}`
+
+* * * * *
+
+### 💣 الخطوة الخطيرة
+
+تاخد **توكن appB (Admin)**\
+وتبعته لـ **appA**
+
+لو appA:
+
+-   ❌ ما بيتحققش من `aud`
+
+-   ✔️ بس بيشوف `admin: true`
+
+👉 appA هيعاملك كـ **Admin**\
+🔥 **Privilege Escalation**
+
+* * * * *
+
+🚨 ليه ده خطير؟
+---------------
+
+-   نفس المستخدم
+
+-   نفس التوكن
+
+-   لكن صلاحيات مختلفة حسب التطبيق
+
+والسيرفر:
+
+> "التوقيع صح؟ خلاص عدّي" ❌
+
+* * * * *
+
+❌ الخطأ البرمجي (Development Mistake)
+-------------------------------------
+
+`jwt.decode(token, secret, algorithms=["HS256"])`
+
+-   مفيش تحقق من `aud`
+
+-   أي توكن متوقع صح → مقبول
+
+* * * * *
+
+✅ الحل الصح (The Fix)
+---------------------
+
+`jwt.decode(
+  token,
+  secret,
+  audience=["appA"],
+  algorithms=["HS256"]
+)`
+
+يعني:
+
+-   التوكن لازم يكون معمول لـ appA
+
+-   غير كده ❌ مرفوض
+
+* * * * *
+
+🧠 إزاي تكتشفه في CTF / Pentest؟
+--------------------------------
+
+دور على:
+
+-   أكتر من application
+
+-   JWT فيه `aud`
+
+-   صلاحيات مختلفة حسب التطبيق
+
+وجرّب:
+
+-   خُد توكن Admin من Service
+
+-   استخدمه على Service تاني
 
 
 
+  
+</details>
 
 
 
+---
+---
 
 
 
+```
+curl -H 'Content-Type: application/json' -X POST -d '{ "username" : "user", "password" : "password7", "application" : "appA" }' http://10.66.129.218/api/v1.0/example7
+```
 
+<img width="1353" height="223" alt="image" src="https://github.com/user-attachments/assets/7c682480-1202-4ee9-9ca1-4f6d5978db2b" />
+
+
+```
+{
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6InVzZXIiLCJhZG1pbiI6MCwiYXVkIjoiYXBwQSJ9.sl-84cMLYjxsD7SCySnnv3J9AMII9NKgz0-0vcak9t4"
+}
+```
+
+---
+
+```
+curl -H 'Content-Type: application/json' -X POST -d '{ "username" : "user", "password" : "password7", "application" : "appB" }' http://10.66.129.218/api/v1.0/example7
+```
+
+<img width="1402" height="208" alt="image" src="https://github.com/user-attachments/assets/079dbe07-9ea8-4bd2-b9e3-923ed1587231" />
+
+
+
+```
+{
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6InVzZXIiLCJhZG1pbiI6MSwiYXVkIjoiYXBwQiJ9.jrTcVTGY9VIo-a-tYq_hvRTfnB4dMi_7j98Xvm-xb6o"
+}
+```
+
+> ## now user JWT of appB in AppA  
+
+
+```
+curl -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6InVzZXIiLCJhZG1pbiI6MSwiYXVkIjoiYXBwQiJ9.jrTcVTGY9VIo-a-tYq_hvRTfnB4dMi_7j98Xvm-xb6o" \
+http://10.66.129.218/api/v1.0/example7_appA?username=admin
+```
+
+
+
+<img width="1319" height="200" alt="image" src="https://github.com/user-attachments/assets/4b3d7f08-d082-4d65-ba42-30ea751b6c86" />
 
 
 
@@ -806,6 +1076,33 @@ access_token = jwt.encode(payload, self.secret, algorithm="HS256")
 
 
 
+
+
+<details>
+  <summary>Conclusion</summary>
+
+
+Conclusion
+
+In this room, several common misconfigurations and vulnerabilities with JWT implementations were showcased. As a summary, take note of the following:
+
+-   As JWTs are sent client-side and encoded, sensitive information should not be stored in their claims.
+-   The JWT is only as secure as its signature. Care should be taken when verifying the signature to ensure that there is no confusion or weak secrets being used.
+-   JWTs should expire and have sensible lifetimes to avoid persistent JWTs being used by a threat actor.
+-   In SSO environments, the audience claim is crucial to ensure that the specific application's JWT is only used on that application.
+-   As JWTs make use of cryptography to generate the signature, cryptographic attacks can also be relevant for JWT exploitation. We will dive into this a bit more in our cryptography module.
+
+-   In this room, we did not cover a JWKS spoofing attack. If you are interested in performing this exploit, take a look at [this room](https://tryhackme.com/r/room/hammer).
+
+
+
+<img width="1919" height="367" alt="image" src="https://github.com/user-attachments/assets/531eb1e2-fb27-4e24-84db-5da5d8f8c039" />
+
+
+
+
+  
+</details>
 
 
 
