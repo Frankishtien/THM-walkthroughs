@@ -234,6 +234,296 @@ python3 script.py emails.txt
 
 
 
+<details>
+  <summary>Exploiting Vulnerable Password Reset Logic</summary>
+
+
+
+<img width="1919" height="674" alt="image" src="https://github.com/user-attachments/assets/47113f5a-23f2-4380-95ae-d8ac5a5fcd26" />
+
+
+
+
+### found the correct one and we get the pass
+
+<img width="1574" height="662" alt="image" src="https://github.com/user-attachments/assets/e2e8fcc8-73cf-4b57-b994-e488fa730507" />
+
+```
+Your new password is: xKl7oka9
+```
+
+```
+admin@admin.com : xKl7oka9
+```
+
+
+<img width="1091" height="330" alt="image" src="https://github.com/user-attachments/assets/13d28848-0824-44bc-85c8-a760918f9a81" />
+
+
+
+  
+</details>
+
+
+
+
+
+
+
+
+
+
+<details>
+  <summary>Exploiting HTTP Basic Authentication</summary>
+
+
+
+
+
+
+
+```
+hydra -l admin -P /usr/share/wordlists/SecLists/Passwords/Common-Credentials/500-worst-passwords.txt 10.113.131.237 http-get /labs/basic_auth
+```
+
+
+
+<img width="1029" height="629" alt="image" src="https://github.com/user-attachments/assets/dd09a31b-4951-4d0a-a169-88612299c271" />
+
+
+
+<img width="1123" height="411" alt="image" src="https://github.com/user-attachments/assets/4d969880-f31e-4095-b3bd-f9e55a085a5a" />
+
+
+
+  
+</details>
+
+
+
+
+
+<details>
+  <summary>OSINT</summary>
+
+
+
+
+🕰️ Wayback URLs
+================
+
+يعني إيه Wayback Machine؟
+-------------------------
+
+ده موقع اسمه\
+**Internet Archive**
+
+وعنده خدمة اسمها\
+**Wayback Machine**
+
+فكرته ببساطة:
+
+> بيحتفظ بنسخ قديمة من المواقع عبر الزمن.
+
+يعني تقدر تشوف شكل الموقع كان عامل إزاي سنة 2018 مثلاً 👀
+
+* * * * *
+
+🎯 ليه ده مهم في الـ Pentesting؟
+--------------------------------
+
+أحيانًا الموقع:
+
+-   كان فيه صفحة قديمة
+
+-   API endpoint
+
+-   admin panel
+
+-   backup file
+
+-   config file
+
+المطور مسحها من الـ frontend...\
+لكن الملف لسه موجود على السيرفر 💥
+
+* * * * *
+
+🖥 مثال عملي
+------------
+
+لو دخلت على:
+
+https://archive.org/web/
+
+ودخلت اسم دومين، هتلاقي نسخ قديمة منه.
+
+![https://www.lifewire.com/thmb/RvYF-_lKCW89dsWpCSqeCN6krVs%3D/1500x0/filters%3Ano_upscale%28%29%3Amax_bytes%28150000%29%3Astrip_icc%28%29/InternetArchive-ba36454589b44b9fb65eb50c02adfa0e.jpg](https://www.lifewire.com/thmb/RvYF-_lKCW89dsWpCSqeCN6krVs%3D/1500x0/filters%3Ano_upscale%28%29%3Amax_bytes%28150000%29%3Astrip_icc%28%29/InternetArchive-ba36454589b44b9fb65eb50c02adfa0e.jpg)
+
+![https://www.researchgate.net/publication/349416593/figure/fig3/AS%3A992736459124738%401613698224321/Calendar-view-in-the-Wayback-Machine.ppm](https://www.researchgate.net/publication/349416593/figure/fig3/AS%3A992736459124738%401613698224321/Calendar-view-in-the-Wayback-Machine.ppm)
+
+![https://cdn.ttc.io/i/fit/800/0/sm/0/plain/kit.exposingtheinvisible.org/web-archive-facebook-success.png](https://cdn.ttc.io/i/fit/800/0/sm/0/plain/kit.exposingtheinvisible.org/web-archive-facebook-success.png)
+
+4
+
+* * * * *
+
+🔥 أداة waybackurls
+-------------------
+
+الأداة دي معمولة بواسطة\
+**Tom Hudson**
+
+بتسحب كل الروابط المؤرشفة لدومين معين.
+
+### الاستخدام:
+
+./waybackurls example.com
+
+هيطلعلك:
+
+-   صفحات قديمة
+
+-   ملفات .zip
+
+-   .bak
+
+-   .old
+
+-   API endpoints
+
+-   .well-known paths
+
+* * * * *
+
+🧠 ليه .well-known مهمة؟
+------------------------
+
+زي:
+
+/.well-known/security.txt\
+/.well-known/openid-configuration
+
+دي أحيانًا بتكشف:
+
+-   OAuth endpoints
+
+-   OpenID config
+
+-   معلومات authentication
+
+* * * * *
+
+🔎 Google Dorks
+===============
+
+يعني إيه Google Dork؟
+---------------------
+
+إنك تستخدم\
+**Google**
+
+بطريقة احترافية عشان تطلع حاجات مش المفروض تكون public.
+
+* * * * *
+
+🎯 أمثلة قوية
+-------------
+
+### 1️⃣ تدور على Admin Panel
+
+site:example.com inurl:admin
+
+ده يقول لجوجل:
+
+-   هاتلي صفحات من الدومين ده
+
+-   وفيها كلمة admin في اللينك
+
+* * * * *
+
+### 2️⃣ تدور على ملفات Logs فيها باسورد
+
+filetype:log "password" site:example.com
+
+لو developer رفع log بالغلط 💀
+
+* * * * *
+
+### 3️⃣ تدور على Backup Folders
+
+intitle:"index of" "backup" site:example.com
+
+أحيانًا السيرفر بيبقى مفعل directory listing.
+
+* * * * *
+
+🧨 ليه Google Dork خطير؟
+------------------------
+
+لأن:
+
+-   أنت مش بتخترق
+
+-   أنت بتستخدم محرك بحث بس
+
+-   بس بتوصل لمعلومات حساسة
+
+* * * * *
+
+⚔️ الفرق بين Wayback و Google Dorks
+===================================
+
+| Wayback | Google Dork |
+| --- | --- |
+| بيرجعك للماضي | بيكشف الموجود حالياً |
+| يطلع صفحات اتحذفت | يطلع ملفات مكشوفة |
+| يعتمد على أرشفة | يعتمد على فهرسة |
+
+* * * * *
+
+🔥 السيناريو الخطير
+===================
+
+1️⃣ تستخدم Wayback\
+→ تلاقي `/backup.zip`
+
+2️⃣ تستخدم Google\
+→ تلاقي directory listing مفتوح
+
+3️⃣ تلاقي credentials في log
+
+💥 دخول مباشر بدون brute force
+
+
+
+
+
+
+
+
+  
+</details>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
