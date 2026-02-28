@@ -817,6 +817,257 @@ if (user.isAdmin) {\
 
 
 
+<details>
+   <summary>Exploitation - Property Injection</summary>
+
+
+
+🧠 أولاً: Recursive Merge يعني إيه؟
+===================================
+
+بص على الفنكشن دي:
+```
+function recursiveMerge(target, source) {\
+    for (let key in source) {\
+        if (source[key] instanceof Object) {\
+            if (!target[key]) target[key] = {};\
+            recursiveMerge(target[key], source[key]);\
+        } else {\
+            target[key] = source[key];\
+        }\
+    }\
+}
+```
+دي بتعمل إيه؟
+
+-   بتلف على كل property في `source`
+
+-   لو القيمة object → تدخل جوه وتكمّل merge
+
+-   لو مش object → تنسخها مباشرة
+
+يعني بتعمل **نسخ عميق (Deep Merge)**.
+
+* * * * *
+
+💣 فين المشكلة؟
+===============
+
+السطر ده:
+```
+for (let key in source)
+```
+بيمشي على كل المفاتيح...\
+من غير ما يسأل:
+
+> هل المفتاح ده آمن أصلاً؟ 👀
+
+* * * * *
+
+😈 الهجوم
+=========
+
+المهاجم يبعت:
+```
+{ "__proto__": { "newProperty": "value" } }
+```
+الفنكشن هتعمل:
+```
+target["__proto__"] = { newProperty: "value" }
+```
+لكن في JavaScript:
+```
+obj["__proto__"]
+```
+مش property عادية ❌\
+ده reference للـ prototype نفسه 💀
+
+فاللي حصل فعليًا:
+```
+Object.prototype.newProperty = "value"
+```
+🔥 كده كل objects في التطبيق بقى عندها newProperty.
+
+* * * * *
+
+🎯 تخيل التأثير
+===============
+
+لو عندك:
+```
+if (user.isAdmin) {\
+   showAdminPanel();\
+}
+```
+والمهاجم عمل:
+```
+{ "__proto__": { "isAdmin": true } }
+```
+أي user بقى Admin 😈
+
+* * * * *
+
+🧬 تاني نقطة: Object Clone + Merge
+==================================
+
+بص على الكود ده:
+```
+let clonedAlbum = { ...albumToClone };\
+merge(clonedAlbum, payload);
+```
+هو بيعمل:
+
+1.  Clone للألبوم
+
+2.  يعمل merge مع payload
+
+* * * * *
+
+الفنكشن الخطيرة:
+----------------
+```
+function merge(to, from) {\
+  for (let key in from) {\
+    if (typeof to[key] == "object" && typeof from[key] == "object") {\
+      merge(to[key], from[key]);\
+    } else {\
+      to[key] = from[key];\
+    }\
+  }\
+  return to;\
+}
+```
+مفيش فلترة\
+مفيش منع لـ `__proto__`\
+مفيش منع لـ `constructor`
+
+يعني لو بعت:
+```
+{"__proto__": {"newProperty": "hacked"}}
+```
+هيعمل:
+```
+clonedAlbum.__proto__.newProperty = "hacked";
+```
+* * * * *
+
+💥 ليه ده بيأثر على كل friend objects؟
+======================================
+
+لأن:
+
+كل friends متخلقين من نفس الـ template\
+فبيشتركوا في نفس prototype.
+
+لما تعدّل prototype\
+كلهم يتأثروا.
+
+* * * * *
+
+👀 طب ليه property مش باينة مباشرة؟
+===================================
+
+لو طبعت object:
+```
+console.log(friend);
+```
+مش هتشوف newProperty.
+
+لكن لو عملت:
+```
+console.log(friend.newProperty);
+```
+هتلاقيها 👀
+
+ليه؟
+
+عشان JS بتدور:
+
+1.  في object نفسه
+
+2.  لو مش لاقي → تطلع prototype
+
+3.  تلاقي newProperty هناك
+
+* * * * *
+
+🔥 ليه ظهرت في الشاشة؟
+======================
+
+في الـ EJS template:
+```
+<% for (let key in friend) { %>
+```
+`for...in`
+
+بتلف على:
+
+✔ properties بتاعة object\
+✔ properties الموروثة من prototype
+
+عشان كده ظهرت على الشاشة 😈
+
+* * * * *
+
+🧠 الصورة الكبيرة
+=================
+
+Prototype Pollution مش دايمًا بتكسر التطبيق فورًا.
+
+لكن تقدر:
+
+-   تضيف isAdmin
+
+-   تضيف isLoggedIn
+
+-   تضيف XSS payload
+
+-   تغيّر behavior
+
+ولما يتجمع مع XSS أو Access Control\
+يبقى كارثة 🔥🔥🔥
+
+
+
+
+
+
+
+
+```json
+{"__proto__": {"isBanned":true}}
+```
+
+<img width="804" height="356" alt="image" src="https://github.com/user-attachments/assets/252f7e04-45aa-4186-bd84-4825e4f228aa" />
+
+<img width="1274" height="518" alt="image" src="https://github.com/user-attachments/assets/d98db229-6eb7-4a7e-903b-86983a440776" />
+
+
+
+   
+</details>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
