@@ -1052,6 +1052,341 @@ Prototype Pollution مش دايمًا بتكسر التطبيق فورًا.
 
 
 
+<details>
+   <summary>Denial of Service</summary>
+
+
+💥 الفكرة الأساسية: Prototype Pollution → DoS
+=============================================
+
+في JavaScript كل Object بيورّث من:
+```
+Object.prototype
+```
+لو قدرت تلوّث (pollute) الـ prototype ده\
+يبقى أي Object في التطبيق كله هيتأثر.
+
+* * * * *
+
+⚠️ المشكلة هنا إيه؟
+===================
+
+الميثود:
+```
+Object.prototype.toString()
+```
+دي بتتستخدم في كل حتة تقريبًا في JavaScript\
+وأي تحويل لقيمة لـ string بيستدعيها تلقائيًا.
+
+لو غيرناها ❌\
+كل التطبيق يبدأ ينهار.
+
+* * * * *
+
+🧨 إزاي حصل الهجوم؟
+===================
+
+في الفورم دي:
+```
+<form action="/clone-album/1" method="post">
+```
+السيرفر بيعمل:
+
+```
+merge(object1, object2)
+```
+والميرج ده مش محمي ضد `__proto__`.
+
+* * * * *
+
+🔥 الباي لود المستخدم
+=====================
+
+
+```
+{"__proto__": {"toString": "Just crash the server"}}
+```
+إحنا هنا بنقول:
+
+> حط في البروتوتايب خاصية toString بقيمة نص عادي
+
+يعني بدل ما تبقى function\
+بقت string ❗
+
+* * * * *
+
+🧠 إيه اللي بيحصل داخليًا؟
+==========================
+
+1.  السيرفر يستقبل الـ JSON
+
+2.  يعمل parse
+
+3.  يعمل merge
+
+4.  `__proto__` تتضاف
+
+5.  `Object.prototype.toString` تتغير
+
+بعدها أول ما التطبيق ينادي:
+```
+Object.prototype.toString.call(...)
+```
+يحصل:
+```
+TypeError: Object.prototype.toString.call is not a function
+```
+لأننا مسحنا الفانكشن وخليّناها String.
+
+* * * * *
+
+💣 النتيجة
+==========
+
+-   التطبيق ينهار
+
+-   السيرفر يكرش
+
+-   يحصل Denial of Service
+
+-   كل المستخدمين يتمنعوا من الخدمة
+
+* * * * *
+
+🚨 ليه دي DoS؟
+==============
+
+لأن:
+
+-   مفيش RCE
+
+-   مفيش Data leak
+
+-   بس السيرفر بقى مش شغال
+
+وده كافي إنه يبقى هجوم DoS.
+
+* * * * *
+
+🎯 نقطة مهمة
+============
+
+مش أي فانكشن تغيرها هتكرش السيرفر.
+
+ممكن تغيّر:
+
+-   toJSON
+
+-   valueOf
+
+-   constructor
+
+بس التأثير بيعتمد على استخدام التطبيق ليها.
+
+* * * * *
+
+🔄 لو السيرفر وقع
+=================
+
+ادخل على:
+```
+http://10.112.154.103:8080
+```
+عشان تعيد تشغيله.
+
+
+
+---
+
+```
+{"__proto__": {"toString": "Just crash the server"}}
+```
+
+<img width="1159" height="496" alt="image" src="https://github.com/user-attachments/assets/bfaae769-f405-4837-b6b4-ca1712ae69e2" />
+
+```
+{"__proto__": {"toLocaleString": "Just crash the server"}}
+```
+
+<img width="1489" height="479" alt="image" src="https://github.com/user-attachments/assets/38601aea-1c44-4018-bfa4-afb537290641" />
+
+
+   
+</details>
+
+
+
+
+
+
+
+<details>
+   <summary>Automating the Process</summary>
+
+
+
+🔎 ليه اكتشاف Prototype Pollution صعب؟
+======================================
+
+المشكلة الأساسية إن **JavaScript** نظامه مختلف عن لغات كتير.
+
+فيه حاجة اسمها:
+```
+Object.prototype
+```
+أي Object في التطبيق بيورّث منه.
+
+فلو حصل تلاعب فيه → كل Objects تتأثر.
+
+* * * * *
+
+🧠 ليه الأدوات مش بتلقطها بسهولة؟
+---------------------------------
+
+على عكس:
+
+-   SQL Injection (في patterns واضحة)
+
+-   XSS (في `<script>` مثلاً)
+
+-   Command Injection (في `;`, `&&`)
+
+Prototype Pollution:
+
+❌ مفيهاش Pattern ثابت\
+❌ ممكن تحصل في merge عادي جدًا\
+❌ بتعتمد على منطق الكود (Business Logic)
+
+يعني لازم تفهم:
+
+-   الكود بيعمل merge إزاي؟
+
+-   هل بيستخدم lodash؟
+
+-   هل فيه deep clone؟
+
+-   هل بياخد JSON من المستخدم؟
+
+مش مجرد فحص سريع وخلاص.
+
+* * * * *
+
+🎯 إزاي البنتستر يكتشفها؟
+=========================
+
+لازم يدور على:
+
+-   أي مكان بيعمل:
+
+    -   `merge()`
+
+    -   `Object.assign()`
+
+    -   deep cloning
+
+    -   JSON parsing من user input
+
+ولو المستخدم يقدر يتحكم في مفاتيح زي:
+```
+{\
+  "__proto__": {}\
+}
+```
+أو:
+```
+{\
+  "constructor": {\
+    "prototype": {}\
+  }\
+}
+```
+يبقى في خطر 🔥
+
+* * * * *
+
+🛠 أدوات بتساعد في الاكتشاف
+===========================
+
+1️⃣ NodeJsScan
+--------------
+
+أداة Static Analysis لتطبيقات Node.js\
+بتفحص الكود وتدور على vulnerabilities ومنها prototype pollution.
+
+مفيدة في:
+
+-   مرحلة التطوير
+
+-   CI/CD
+
+* * * * *
+
+2️⃣ Prototype Pollution Scanner
+-------------------------------
+
+أداة مخصصة تدور على patterns اللي ممكن تسبب pollution\
+بتحلل الكود وتقولك فين احتمالية المشكلة.
+
+* * * * *
+
+3️⃣ PPFuzz
+----------
+
+دي Fuzzer 🔥
+
+يعني:
+
+-   تبعت inputs مختلفة عشوائية
+
+-   تحاول تحقن `__proto__`
+
+-   تشوف هل التطبيق يتأثر
+
+مفيدة جدًا في Black-box testing.
+
+* * * * *
+
+4️⃣ BlackFan (Client-side detection)
+------------------------------------
+
+بيركز على:
+
+-   Prototype Pollution في المتصفح
+
+-   إزاي تتحول لـ XSS
+
+مهم جدًا لأن أحيانًا المشكلة تكون في Frontend مش Backend.
+
+* * * * *
+
+⚠️ أهم حاجة البنتستر يركز عليها
+===============================
+
+يسأل نفسه:
+
+> هل المستخدم يقدر يتحكم في اسم property؟
+
+مثال خطر:
+
+```
+merge(userInput, safeObject)
+```
+لو userInput فيه:
+
+```
+{\
+  "__proto__": {\
+    "isAdmin": true\
+  }\
+}
+```
+ممكن كل users يبقوا admin 💀
+
+
+
+
+   
+</details>
 
 
 
@@ -1061,16 +1396,188 @@ Prototype Pollution مش دايمًا بتكسر التطبيق فورًا.
 
 
 
+<details>
+   <summary>Mitigation Measures</summary>
 
 
 
 
 
+🛡 أولًا: دور الـ Pentester
+===========================
+
+هدفك إنك تكتشف لو التطبيق قابل لـ Prototype Pollution.
+
+1️⃣ Input Fuzzing
+-----------------
+
+جرب تحقن Payloads زي:
+```
+{"__proto__":{"isAdmin":true}}
+```
+أو:
+```
+{"constructor":{"prototype":{"polluted":true}}}
+```
+لو لاحظت سلوك غريب → فيه مشكلة 🔥
+
+* * * * *
+
+2️⃣ تحليل السياق (Context Analysis)
+-----------------------------------
+
+افتح الكود وشوف:
+
+-   هل فيه `merge()` ؟
+
+-   هل فيه `Object.assign()` ؟
+
+-   هل فيه deep clone؟
+
+-   هل بيعمل parse لـ JSON من المستخدم؟
+
+لو user يقدر يتحكم في اسم الـ key → خطر.
+
+* * * * *
+
+3️⃣ اختبار CSP
+--------------
+
+لو حصل Pollution في Client-side:
+
+-   هل CSP يمنع تنفيذ سكريبت خبيث؟
+
+-   هل تقدر تتجاوز CSP؟
+
+ده مهم لو الهجوم هيتحول لـ XSS.
+
+* * * * *
+
+4️⃣ تحليل الـ Dependencies
+--------------------------
+
+مهم جدًا 👇
+
+كتير من الثغرات بتيجي من:
+
+-   lodash (إصدارات قديمة)
+
+-   hoek
+
+-   jQuery plugins
+
+لو مكتبة قديمة → ممكن تكون أصل المشكلة.
+
+* * * * *
+
+5️⃣ Static Code Analysis
+------------------------
+
+استخدم أدوات تساعدك تكشف patterns خطيرة\
+بس متعتمدش عليها 100%.
+
+* * * * *
+
+👨‍💻 ثانيًا: دور الـ Developer (الحماية)
+=========================================
+
+هنا بقى بنقفل الباب خالص 🚪
+
+* * * * *
+
+🚫 1️⃣ تجنب **proto**
+---------------------
+
+بلاش تستخدم:
+```
+obj.__proto__
+```
+واستخدم بدلها:
+```
+Object.getPrototypeOf(obj)
+```
+أأمن وأوضح.
+
+* * * * *
+
+🧱 2️⃣ Immutable Objects
+------------------------
+
+خلي الـ Objects غير قابلة للتعديل لما ينفع:
+```
+Object.freeze(obj)
+```
+ده يمنع أي تعديل على الخصائص.
+
+* * * * *
+
+🔒 3️⃣ Encapsulation
+--------------------
+
+متعرضش كل حاجة للمستخدم.\
+خلي التعديل في نطاق محدود.
+
+* * * * *
+
+✅ 4️⃣ Safe Defaults
+-------------------
+
+لما تنشئ Object:
+
+-   متاخدش prototype من user input
+
+-   اعمل initialize ثابت وآمن
+
+* * * * *
+
+🧹 5️⃣ Input Sanitisation (الأهم)
+---------------------------------
+
+اعمل Block لأي مفاتيح زي:
+
+-   `__proto__`
+
+-   `constructor`
+
+-   `prototype`
+
+مثال:
+```
+if (key === "__proto__") reject();
+```
+* * * * *
+
+📦 6️⃣ Dependency Management
+----------------------------
+
+-   حدّث المكتبات باستمرار
+
+-   راقب CVEs
+
+-   استخدم نسخ مستقرة
+
+* * * * *
+
+🛡 7️⃣ Security Headers
+-----------------------
+
+استخدم:
+
+-   Content Security Policy (CSP)
+
+-   X-Content-Type-Options
+
+-   X-Frame-Options
+
+مش هتمنع الـ Pollution نفسها\
+بس تقلل تأثيرها لو اتحولت لـ XSS.
 
 
 
 
 
+   
+</details>
 
 
 
