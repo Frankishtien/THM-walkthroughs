@@ -1375,6 +1375,17 @@ Checklist احترافية 👇
 
 
 
+----
+
+<img width="1136" height="687" alt="image" src="https://github.com/user-attachments/assets/208c3dc9-5e1e-4df2-8c44-bbcd61cabfdb" />
+
+```
+ http://bistro.thm:8000/oauthdemo/callbackforflag/?code=tqAjWT4AiQdVoM8skkhzR1DIevjomR
+```
+
+<img width="1327" height="367" alt="image" src="https://github.com/user-attachments/assets/b78903a8-67e0-4e6b-a466-053d449d3dfd" />
+
+
 
 
 
@@ -1388,7 +1399,9 @@ Checklist احترافية 👇
 
 
 
-
+<details>
+  <summary></summary>
+</details>
 
 
 
