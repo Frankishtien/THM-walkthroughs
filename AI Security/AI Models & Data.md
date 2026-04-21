@@ -968,7 +968,17 @@ Model Card = الدليل بتاعك
   <summary>Practical</summary>
 
 
-![Uploading image.png…]()
+### Severity :
+
+1.  publicly available web sources : High
+2.  forums, Q&A sites : High
+3.  enterprise-base-v1.1 : Medium
+4.  macro-avermacro-averaged F1 score of 0.91 : Medium
+5.  Custom licence. Contact trustedai-lab for terms. : Medium
+6.  268 MB : Medium
+
+
+<img width="984" height="845" alt="image" src="https://github.com/user-attachments/assets/2b8310aa-471b-4f03-bf13-204e888f98a5" />
 
 
   
