@@ -530,6 +530,9 @@ Content-Length: 20
 username=ahmed
 ```
 
+<img width="1222" height="370" alt="image" src="https://github.com/user-attachments/assets/6b2f0a3b-f848-47f2-a4a4-83c03e4e7fd5" />
+
+
 * * * * *
 
 1) Request Line
@@ -653,6 +656,11 @@ Cookie: session=12345
 -   هل فيه تسجيل دخول؟
 -   حجم البيانات؟
 
+
+
+![](https://tryhackme-images.s3.amazonaws.com/user-uploads/645b19f5d5848d004ab9c9e2/room-content/2e8e7deef6eaa04f3461647e61bf3566.svg)
+
+
 * * * * *
 
 3) Body
@@ -769,7 +777,7 @@ Transfer-Encoding: chunked
 بعدها:
 
 ```
-b
+e
 q=smuggledData
 0
 ```
@@ -782,7 +790,7 @@ q=smuggledData
 --------
 
 ```
-b
+e
 ```
 
 ده حجم الـ chunk.
@@ -792,7 +800,7 @@ b
 يعني:
 
 ```
-b = 11
+e = 14
 ```
 
 بالعشري.
@@ -979,6 +987,1109 @@ TE.TE
 
 
 
+<img width="927" height="425" alt="image" src="https://github.com/user-attachments/assets/349d70a3-9b43-47ca-bda6-e53fbb5a5ce2" />
+
+
+  
+</details>
+
+
+
+
+<details>
+  <summary>Request Smuggling CL.TE</summary>
+
+
+
+أولًا يعني إيه CL.TE ؟
+======================
+
+الاسم نفسه بيفسر كل حاجة.
+
+```
+CL = Content-Length
+
+TE = Transfer-Encoding
+```
+
+يعني:
+
+**Front-end بيستخدم Content-Length**
+
+لكن
+
+**Back-end بيستخدم Transfer-Encoding**
+
+وده سبب المشكلة.
+
+* * * * *
+
+الصورة الطبيعية
+===============
+
+عندك:
+
+```
+Attacker
+    |
+    |
+Front-end (Proxy)
+    |
+    |
+Back-end
+```
+
+الاتنين بيقرأوا نفس الـ Request.
+
+لكن...
+
+الـ Proxy يقول:
+
+> "أنا هصدق Content-Length"
+
+أما الـ Backend يقول:
+
+> "لا... أنا هصدق Transfer-Encoding"
+
+وده معناه إن كل واحد هيحدد **نهاية الـ Request** بطريقة مختلفة.
+
+
+<img width="927" height="425" alt="image" src="https://github.com/user-attachments/assets/ebae78bf-98eb-48ce-9558-91d02380ac3c" />
+
+
+
+
+
+* * * * *
+
+تعال نشوف الـ Payload
+=====================
+
+```
+POST /search HTTP/1.1
+Host: example.com
+
+Content-Length:130
+Transfer-Encoding: chunked
+
+0
+
+POST /update HTTP/1.1
+Host: example.com
+Content-Length:13
+
+isadmin=true
+```
+
+
+هنقسمها.
+
+* * * * *
+
+أول جزء
+-------
+
+```
+POST /search HTTP/1.1
+```
+
+ده الـ Request الأساسي.
+
+* * * * *
+
+بعدها:
+
+```
+Content-Length:130
+```
+
+الـ Proxy يقول:
+
+> "تمام... هقرأ 130 بايت."
+
+* * * * *
+
+لكن الـ Backend يشوف:
+
+```
+Transfer-Encoding: chunked
+```
+
+فيقول:
+
+> "أنا ماليش دعوة بالـ Content-Length."
+
+* * * * *
+
+بعدين يشوف
+----------
+
+```
+0
+```
+
+
+يعني:
+
+> انتهى الـ Body.
+
+يعني بالنسبة للـ Backend...
+
+الـ Request انتهى هنا.
+
+* * * * *
+
+لكن الـ Proxy شايف حاجة تانية
+=============================
+
+الـ Proxy يقول:
+
+"لا لا...
+
+أنا لسه معدتش 130 بايت."
+
+فيكمل قراءة:
+
+```
+POST /update HTTP/1.1
+```
+
+ويعتبرها...
+
+جزء من الـ Body.
+
+* * * * *
+
+يعني بالنسبة للـ Proxy:
+
+```
+Request 1
+|
+|
+POST /search
+
+Body
+
+0
+
+POST /update
+
+isadmin=true
+```
+
+كل ده Request واحدة.
+لكن بيعتبر ال `POST /update`  جزئ من ال body
+
+* * * * *
+
+أما الـ Backend...
+
+هيشوف:
+
+```
+Request 1
+
+POST /search
+
+Body
+
+0
+```
+
+خلصت.
+
+ثم بعدها يلاقي:
+
+```
+POST /update HTTP/1.1
+```
+
+فيقول:
+
+> أوه...
+
+ده Request جديدة.
+
+* * * * *
+
+يعني الـ Backend هيشغلها فعلاً.
+
+وده اسمه:
+
+> Request Smuggling
+
+لأنك "هربت"
+
+Request كاملة
+
+داخل Request تانية.
+
+* * * * *
+
+ليه ده خطر؟
+===========
+
+تخيل بدل:
+
+```
+POST /update
+```
+
+كتبت:
+
+```
+POST /admin/deleteAllUsers
+```
+
+أو
+
+```
+GET /admin
+```
+
+أو
+
+```
+POST /change-password
+```
+
+الـ Backend ممكن ينفذها.
+
+مع إن الـ Proxy مكانش يقصد يبعتها كـ Request مستقلة.
+
+* * * * *
+
+ليه اسمه Smuggling؟
+===================
+
+Smuggling يعني تهريب.
+
+أنت عملت:
+
+```
+Request 1
+
+جواها
+
+Request 2
+```
+
+فالـ Proxy افتكرها Body.
+
+لكن الـ Backend افتكرها Request جديدة.
+
+* * * * *
+
+نقطة مهمة جدًا
+==============
+
+
+
+> لو Content-Length غلط
+
+يحصل مشاكل.
+
+
+* * * * *
+
+عندك Body:
+
+```
+username=test&query=test
+```
+
+عددها
+
+24 Byte.
+
+* * * * *
+
+يبقى الصح:
+
+```
+Content-Length:24
+```
+
+<img width="1960" height="666" alt="image" src="https://github.com/user-attachments/assets/b1d25092-5057-4168-ac34-ee35b48ceb4d" />
+
+<img width="1302" height="206" alt="image" src="https://github.com/user-attachments/assets/1fc62668-60a8-41e9-b550-3f5a92e0b0ec" />
+
+
+
+
+* * * * *
+
+لكن لو كتبت
+
+```
+Content-Length:10
+```
+
+الـ Proxy هيقول:
+
+> اقرأ أول 10 Bytes بس.
+
+<img width="2034" height="670" alt="image" src="https://github.com/user-attachments/assets/59d4e713-c0b0-4160-a3e0-de76817316c3" />
+
+
+يعني:
+
+```
+username=t
+```
+
+بس.
+
+وسيبقى الباقي:
+
+```
+est&query=test
+```
+
+<img width="1258" height="210" alt="image" src="https://github.com/user-attachments/assets/c4ac18f6-6b6d-42e2-b6e7-002893b50808" />
+
+
+لسه موجود.
+
+وده يخلي السيرفر يفسره بطريقة مختلفة.
+
+* * * * *
+
+مثال
+====
+
+الـ Body
+
+```
+username=test&query=test
+```
+
+24 Byte
+
+لو قلت
+
+```
+Content-Length:15
+```
+
+السيرفر هيقرأ
+
+```
+username=test&
+```
+
+ويقف.
+
+والباقي
+
+```
+query=test
+```
+
+هيفضل موجود في الـ TCP connection.
+
+وده من الأسباب اللي بتخلي الـ Request التالية تلخبط الدنيا.
+
+* * * * *
+
+ليه لازم يكون الـ Content-Length دقيق؟
+======================================
+
+علشان الـ Proxy يعرف:
+
+> فين نهاية الـ Request.
+
+لو الرقم غلط:
+
+هيقف بدري.
+
+أو
+
+هيكمل زيادة.
+
+وفي الحالتين
+
+يحصل اختلاف مع الـ Backend.
+
+
+  
+</details>
+
+
+
+
+
+<details>
+  <summary>Request Smuggling TE.CL</summary>
+
+
+
+CL.TE
+-----
+
+```
+Proxy  ---> Content-Length
+
+Backend ---> Transfer-Encoding
+```
+
+TE.CL
+-----
+
+```
+Proxy  ---> Transfer-Encoding
+
+Backend ---> Content-Length
+```
+
+
+* * * * *
+
+دلوقتي نشوف الـ Payload
+=======================
+
+```
+POST / HTTP/1.1
+Host: example.com
+
+Content-Length: 4
+Transfer-Encoding: chunked
+
+78
+POST /update HTTP/1.1
+Host: example.com
+Content-Length:15
+
+isadmin=true
+0
+```
+
+* * * * *
+
+هنشوف الـ Proxy بيقرأ إزاي
+==========================
+
+الـ Proxy يعتمد على:
+
+```
+Transfer-Encoding: chunked
+```
+
+فيشوف:
+
+```
+78
+```
+
+طيب دي كام؟
+
+```
+78 Hex = 120 Decimal
+```
+
+يعني الـ Proxy يقول:
+
+> "اقرأ الـ 120 Byte دول كلهم."
+
+فيقرأ:
+
+```
+POST /update HTTP/1.1
+Host: example.com
+Content-Length:15
+
+isadmin=true
+```
+
+وبعدين يشوف:
+
+```
+0
+```
+
+فيقول:
+
+> انتهت الـ Chunked Body.
+
+إذن بالنسبة للـ Proxy:
+
+```
+كل ده Request واحدة.
+```
+
+* * * * *
+
+دلوقتي الـ Backend
+==================
+
+الـ Backend مش مهتم بالـ Chunked.
+
+هو يشوف:
+
+```
+Content-Length:4
+```
+
+فيقول:
+
+> "أنا هقرأ 4 Bytes بس."
+
+* * * * *
+
+أول 4 Bytes هما
+---------------
+
+```
+78\r\n
+```
+
+(يعني الرقم `78` ونهاية السطر).
+
+فبالنسبة له، بعد أول 4 بايت انتهى الـ Body.
+
+* * * * *
+
+بعدها يبص يلاقي:
+
+```
+POST /update HTTP/1.1
+...
+```
+
+فيقول:
+
+> "دي Request جديدة."
+
+ويبدأ ينفذها.
+
+* * * * *
+
+الفرق بين CL.TE و TE.CL
+=======================
+
+### CL.TE
+
+الـ Backend هو اللي خلص بدري لأنه شاف:
+
+```
+0
+```
+
+بينما الـ Proxy كان لسه مستني حسب `Content-Length`.
+
+* * * * *
+
+### TE.CL
+
+العكس.
+
+الـ Backend خلص بدري لأنه شاف:
+
+```
+Content-Length:4
+```
+
+بينما الـ Proxy كان لسه بيقرأ لحد:
+
+```
+0
+```
+
+* * * * *
+
+
+ليه اختاروا Content-Length = 4 ؟
+================================
+
+دي من أكتر الحاجات اللي بتلخبط الناس.
+
+بص على بداية الـ Body:
+
+```
+78
+```
+
+لكن في الحقيقة اللي بيتبعت على الشبكة مش `78` بس.
+
+في HTTP بعد كل سطر فيه:
+
+```
+\r\n
+```
+
+يعني:
+
+```
+7  = 1 byte
+8  = 1 byte
+\r = 1 byte
+\n = 1 byte
+```
+
+يبقى:
+
+```
+78\r\n = 4 Bytes
+```
+
+عشان كده اختاروا:
+
+```
+Content-Length:4
+```
+
+فالـ Backend يقرأ:
+
+```
+78\r\n
+```
+
+ويقف.
+
+وأول حاجة يشوفها بعد كده هي:
+
+```
+POST /update
+```
+
+وده المطلوب.
+
+* * * * *
+
+سؤال مهم
+========
+
+يمكن تقول:
+
+> "طب ليه الـ Backend اعتبر `POST /update` Request جديدة؟"
+
+لأنه بعد ما خلص يقرأ الأربع بايت اللي طلبهم `Content-Length`، هو **لسه فاتح نفس اتصال TCP**، ولسه فيه بيانات جاية. أول سطر بعد كده شكله:
+
+```
+POST /update HTTP/1.1
+```
+
+وده بالضبط شكل بداية Request جديدة في HTTP/1.1، فيبدأ يفسرها كطلب جديد.
+
+
+
+
+| CL.TE                                   | TE.CL                                                                    |
+| --------------------------------------- | ------------------------------------------------------------------------ |
+| Proxy يعتمد على **Content-Length**      | Proxy يعتمد على **Transfer-Encoding**                                    |
+| Backend يعتمد على **Transfer-Encoding** | Backend يعتمد على **Content-Length**                                     |
+| الـ Backend ينهي الـ Request عند `0`    | الـ Backend ينهي الـ Request عند عدد البايتات المحدد في `Content-Length` |
+
+
+
+
+
+
+
+  
+</details>
+
+
+
+<details>
+  <summary>Transfer Encoding Obfuscation (TE.TE)</summary>
+
+
+
+
+أولًا يعني إيه TE.TE؟
+=====================
+
+الاسم يقول:
+
+```
+Transfer-Encoding
+Transfer-Encoding
+```
+
+يعني:
+
+```
+Proxy  ---> يستخدم TE
+
+Backend ---> يستخدم TE
+```
+
+طيب هتقول:
+
+> "أمال فين المشكلة؟ ما الاتنين بيستخدموا نفس الـ Header!"
+
+**وده السؤال الصح.** 👏
+
+* * * * *
+
+فين المشكلة؟
+============
+
+المشكلة **مش إنهم بيستخدموا Header مختلفة.**
+
+المشكلة إنهم **بيفسروا نفس Header بطريقة مختلفة.**
+
+يعني:
+
+الاتنين شايفين:
+
+```
+Transfer-Encoding
+```
+
+لكن واحد يقول:
+
+> "ده Header صحيحة."
+
+والتاني يقول:
+
+> "لا... دي Header بايظة."
+
+* * * * *
+
+مثال
+----
+
+لو كتبت:
+
+```
+Transfer-Encoding: chunked
+```
+
+دي صحيحة 100%.
+
+* * * * *
+
+لكن لو كتبت:
+
+```
+Transfer-Encoding: chunked1
+```
+
+دي غلط.
+
+* * * * *
+
+أو
+
+```
+Transfer-Encoding : chunked
+```
+
+(مسافة زيادة)
+
+أو
+
+```
+Transfer-Encoding: chunk
+```
+
+أو
+
+```
+Transfer-Encoding: chunked, cow
+```
+
+فيه عشرات الطرق لتشويه (Obfuscate) الـ Header.
+
+* * * * *
+
+ليه نشوهها؟
+===========
+
+علشان نخلي:
+
+الـ Proxy يقول:
+
+> "أنا هعتبرها Transfer-Encoding."
+
+لكن
+
+الـ Backend يقول:
+
+> "لا... دي Header غير صالحة."
+
+أو العكس.
+
+* * * * *
+
+يعني TE.TE ممكن يتحول لإيه؟
+===========================
+
+وده أهم سطر في الدرس.
+
+TE.TE **مش هجوم مستقل.**
+
+هو مجرد طريقة تخلي:
+
+```
+Proxy يستخدم TE
+
+Backend يستخدم CL
+```
+
+فتبقى:
+
+```
+TE.CL
+```
+
+أو
+
+```
+Proxy يستخدم CL
+
+Backend يستخدم TE
+```
+
+فتبقى:
+
+```
+CL.TE
+```
+
+يعني TE.TE هو **وسيلة** لإجبار أحد الطرفين على تجاهل `Transfer-Encoding` واستخدام `Content-Length` بدلًا منها.
+
+* * * * *
+
+المثال
+======
+
+```
+POST /
+
+Content-Length:4
+
+Transfer-Encoding: chunked
+
+Transfer-Encoding: chunked1
+```
+
+* * * * *
+
+الـ Proxy
+---------
+
+يشوف:
+
+```
+Transfer-Encoding: chunked
+```
+
+ويقول:
+
+> تمام.
+
+* * * * *
+
+يشوف:
+
+```
+Transfer-Encoding: chunked1
+```
+
+ويقول:
+
+> دي غلط.
+
+فيتجاهلها.
+
+ويكمل بالـ chunked العادية.
+
+* * * * *
+
+أما الـ Backend...
+
+ممكن يعمل حاجة مختلفة.
+
+مثلاً يقول:
+
+> وجود Header متضاربة.
+
+أو
+
+> آخر Header هي اللي تمشي.
+
+أو
+
+> هتجاهل الأولى.
+
+أو
+
+> هرفض الاتنين.
+
+وده بيعتمد على نوع السيرفر وإصداره.
+
+* * * * *
+
+ليه اسمه Obfuscation؟
+=====================
+
+Obfuscation يعني:
+
+> تشويه أو تمويه.
+
+يعني تخلي الـ Header شكلها غريب.
+
+مثلاً:
+
+```
+Transfer-Encoding: chunked
+Transfer-Encoding: chunked1
+```
+
+أو
+
+```
+Transfer-Encoding: xchunked
+```
+
+أو
+
+```
+Transfer-Encoding: chunked;
+```
+
+أو
+
+```
+Transfer-Encoding: chunked\t
+```
+
+كل Server له طريقة مختلفة في التعامل مع الحاجات دي.
+
+* * * * *
+
+طيب لو حصل اختلاف؟
+==================
+
+نفترض:
+
+الـ Proxy قال:
+
+> هستخدم Transfer-Encoding.
+
+لكن الـ Backend قال:
+
+> لا... الـ Transfer-Encoding بايظة.
+
+هروح أستخدم:
+
+```
+Content-Length
+```
+
+خلاص.
+
+بقت:
+
+```
+TE.CL
+```
+
+* * * * *
+
+ولو العكس.
+
+الـ Proxy رفض الـ TE.
+
+لكن الـ Backend قبلها.
+
+تبقى:
+
+```
+CL.TE
+```
+
+* * * * *
+
+يبقى TE.TE عبارة عن إيه؟
+========================
+
+بص للرسم ده.
+
+```
+Attacker
+    |
+    |
+Transfer-Encoding مكتوبة بطريقة غريبة
+    |
+    |
+--------------------------
+|                        |
+Proxy              Backend
+|                        |
+يفهمها            يفهمها بشكل مختلف
+```
+
+ومن هنا يبدأ الاختلاف.
+
+* * * * *
+
+أهم معلومة في الجزئيه دي 
+=======================
+
+ناس كتير فاكرة:
+
+> TE.TE يعني لازم يبقى فيه اتنين Transfer-Encoding.
+
+وده **مش صحيح**.
+
+thm قالت:
+
+> **The TE.TE vulnerability doesn't always require multiple Transfer-Encoding headers.**
+
+يعني ممكن يبقى فيه **Header واحدة بس**، لكن مكتوبة بشكل يخلي مكون يقبلها ومكون تاني يرفضها أو يفسرها بشكل مختلف.
+
+مثلاً:
+
+```
+Transfer-Encoding: chunked;
+```
+
+بعض السيرفرات تقول:
+
+> عادي.
+
+وسيرفرات تانية تقول:
+
+> Header غير صحيحة.
+
+وهنا يبدأ الاختلاف.
+
+
+
+
+
+
+
+| النوع     | الـ Proxy                                                       | الـ Backend       |
+| --------- | --------------------------------------------------------------- | ----------------- |
+| **CL.TE** | Content-Length                                                  | Transfer-Encoding |
+| **TE.CL** | Transfer-Encoding                                               | Content-Length    |
+| **TE.TE** | الاتنين بيستخدموا Transfer-Encoding، لكن **يختلفوا في تفسيرها** |                   |
+
+
+
+
+
+
+  
+</details>
+
+
+
+
+
+<details>
+  <summary>Walkthrough</summary>
+
+
+
+
+
+
   
 </details>
 
@@ -1001,6 +2112,14 @@ TE.TE
 
 
 
+
+
+
+
+
+- how i now the proxy/server will user what ??
+- TE.TE how i know whick one will accept the header 
+>    by testing (jsut try!!!)
 
 
 
