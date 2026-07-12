@@ -294,6 +294,13 @@ website.com/login
 
 * * * * *
 
+
+![image](https://tryhackme-images.s3.amazonaws.com/user-uploads/645b19f5d5848d004ab9c9e2/room-content/adaa5ac3ca48557bdf12e4b7758fd429.svg)
+
+
+
+
+
 طيب إيه علاقة ده بـ HTTP Request Smuggling؟
 ===========================================
 
@@ -483,8 +490,558 @@ Proxy interpretation ≠ Backend interpretation
 ومن هنا يبدأ **HTTP Request Smuggling**.
 
 
+
+<img width="1125" height="393" alt="image" src="https://github.com/user-attachments/assets/0cdbcd95-8e6e-44f2-b6f1-6556a15bbd58" />
+
+
+
+
+
   
 </details>
+
+
+
+<details>
+  <summary>Behind the Scenes</summary>
+
+
+
+أولًا: شكل HTTP Request
+=======================
+
+أي Request في HTTP بيتكون من 3 أجزاء أساسية:
+
+```
+Request Line
+Headers
+Body
+```
+
+يعني شكله كده:
+
+```
+POST /admin/login HTTP/1.1
+
+Host: example.com
+Content-Type: application/json
+Content-Length: 20
+
+username=ahmed
+```
+
+* * * * *
+
+1) Request Line
+===============
+
+أول سطر في الطلب:
+
+```
+POST /admin/login HTTP/1.1
+```
+
+بيتكون من 3 حاجات:
+
+Method
+------
+
+يعني الأمر اللي بتقوله للسيرفر.
+
+أمثلة:
+
+```
+GET
+```
+
+يعني:
+
+> هاتلي حاجة
+
+مثلا:
+
+```
+GET /profile
+```
+
+* * * * *
+
+```
+POST
+```
+
+يعني:
+
+> أنا هبعت بيانات
+
+مثلا:
+
+```
+POST /login
+```
+
+معاه username و password.
+
+* * * * *
+
+Path
+----
+
+ده المكان اللي أنت عايزه داخل الموقع.
+
+مثلا:
+
+```
+/admin/login
+```
+
+يعني صفحة تسجيل دخول الأدمن.
+
+* * * * *
+
+HTTP Version
+------------
+
+مثلا:
+
+```
+HTTP/1.1
+```
+
+ده إصدار البروتوكول.
+
+مهم تعرف إن:\
+HTTP/1.1 مختلف عن HTTP/2.
+
+والـ Request Smuggling غالبًا بيظهر مع طريقة تعامل HTTP/1.1 مع الـ requests.
+
+* * * * *
+
+2) Headers
+==========
+
+الـ Headers هي معلومات إضافية عن الطلب.
+
+اعتبرها زي ظرف الرسالة.
+
+الرسالة نفسها:
+
+```
+Body
+```
+
+والظرف عليه معلومات:
+
+```
+Headers
+```
+
+مثال:
+
+```
+Host: website.com
+
+Content-Type: application/json
+
+Cookie: session=12345
+```
+
+الـ Headers تقول للسيرفر:
+
+-   مين الموقع؟
+-   نوع البيانات؟
+-   هل فيه تسجيل دخول؟
+-   حجم البيانات؟
+
+* * * * *
+
+3) Body
+=======
+
+ده البيانات الفعلية.
+
+مثلا:
+
+Login:
+
+```
+username=admin&password=test
+```
+
+أو JSON:
+
+```
+{
+ "user":"admin",
+ "pass":"123"
+}
+```
+
+عادة:
+
+GET:
+
+```
+Body = empty
+```
+
+لكن POST:
+
+```
+Body = data
+```
+
+* * * * *
+
+أهم جزء: Content-Length 🔴
+==========================
+
+ده Header بيقول للسيرفر:
+
+> حجم الـ Body كام بالبايت؟
+
+مثال:
+
+```
+POST /submit HTTP/1.1
+Host: good.com
+Content-Length: 14
+
+q=smuggledData
+```
+
+يعني السيرفر يقول:
+
+"تمام، أنا منتظر 14 byte بعد الـ headers."
+
+فيقرأ:
+
+```
+q=smuggledData
+```
+
+وبس.
+
+* * * * *
+
+المشكلة تبدأ هنا 😈
+===================
+
+لو حصل اختلاف في تحديد حجم الـ request.
+
+يعني:
+
+Front-end يقول:
+
+> الـ request انتهى هنا
+
+لكن Backend يقول:
+
+> لا، لسه فيه بيانات
+
+هنا يحصل Request Smuggling.
+
+* * * * *
+
+Transfer-Encoding: chunked
+==========================
+
+ده طريقة ثانية لمعرفة حجم الـ Body.
+
+بدل ما تقول الحجم مرة واحدة:
+
+```
+Content-Length: 100
+```
+
+تقول:
+
+"هجيب البيانات على أجزاء."
+
+يعني chunks.
+
+مثال:
+
+```
+Transfer-Encoding: chunked
+```
+
+بعدها:
+
+```
+b
+q=smuggledData
+0
+```
+
+* * * * *
+
+نفهمها:
+
+أول سطر:
+--------
+
+```
+b
+```
+
+ده حجم الـ chunk.
+
+لكن بالـ Hexadecimal.
+
+يعني:
+
+```
+b = 11
+```
+
+بالعشري.
+
+يعني السيرفر يستقبل 11 byte:
+
+```
+q=smuggledData
+```
+
+* * * * *
+
+آخر حاجة:
+---------
+
+```
+0
+```
+
+معناها:
+
+> خلاص مفيش chunks تاني.
+
+انتهى الـ Body.
+
+* * * * *
+
+طيب ليه عندنا طريقتين للحجم؟
+============================
+
+هنا المشكلة 👀
+
+HTTP عنده طريقتين:
+
+طريقة 1:
+
+```
+Content-Length
+```
+
+وطريقة 2:
+
+```
+Transfer-Encoding: chunked
+```
+
+المفروض تستخدم واحدة.
+
+لكن لو الاتنين موجودين:
+
+```
+Content-Length: 20
+
+Transfer-Encoding: chunked
+```
+
+يحصل confusion.
+
+* * * * *
+
+هنا يولد HTTP Request Smuggling 🔴
+==================================
+
+تخيل عندك:
+
+```
+User
+ |
+ |
+Front-end Proxy
+ |
+ |
+Backend
+```
+
+الـ Front-end يقرأ الـ request بطريقة.
+
+والـ Backend يقرأه بطريقة مختلفة.
+
+مثلا:
+
+Front-end:
+----------
+
+يقول:
+
+"أنا هثق في Content-Length"
+
+```
+Content-Length: 50
+```
+
+فيقرأ أول 50 byte فقط.
+
+* * * * *
+
+Backend:
+--------
+
+يقول:
+
+"أنا هثق في Transfer-Encoding"
+
+ويقرأ chunks.
+
+* * * * *
+
+النتيجة:
+
+الاتنين عندهم حدود مختلفة للـ request.
+
+يعني:
+
+Front-end شايف:
+
+```
+Request 1
+```
+
+لكن Backend شايف:
+
+```
+Request 1 + Request مخبي
+```
+
+وده معنى:
+
+Smuggling
+---------
+
+يعني:
+
+"تهريب Request داخل Request آخر."
+
+* * * * *
+
+أنواع HTTP Request Smuggling اللي هتقابلها
+==========================================
+
+بعد شوية هتدرس:
+
+CL.TE
+-----
+
+يعني:
+
+Front-end يستخدم:
+
+```
+Content-Length
+```
+
+Backend يستخدم:
+
+```
+Transfer-Encoding
+```
+
+* * * * *
+
+TE.CL
+-----
+
+العكس.
+
+Front-end يستخدم:
+
+```
+Transfer-Encoding
+```
+
+Backend يستخدم:
+
+```
+Content-Length
+```
+
+* * * * *
+
+TE.TE
+-----
+
+الاتنين يستخدموا Transfer-Encoding لكن بطريقة مختلفة.
+
+
+
+  
+</details>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
