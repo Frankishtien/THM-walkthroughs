@@ -2086,10 +2086,80 @@ Transfer-Encoding: chunked;
   <summary>Walkthrough</summary>
 
 
+هنا:
+
+الـ Front-end (Apache Traffic Server)
+
+يعتمد على
+
+```
+Content-Length
+```
+
+بينما الـ Back-end (Nginx)
+
+يعتمد على
+
+```
+Transfer-Encoding
+```
+
+إذن كل واحد يرى الطلب بشكل مختلف.
 
 
 
 
+
+---
+
+<img width="1169" height="342" alt="image" src="https://github.com/user-attachments/assets/c8d821ae-4b13-449f-bb7b-15dd88b159fa" />
+
+```
+http://httprequestsmuggling.thm/login.php
+```
+
+<img width="1426" height="561" alt="image" src="https://github.com/user-attachments/assets/0ec1d9bc-7e44-483f-a0f8-3f6418126de0" />
+
+
+```
+THM{1c4N_$mU66l3!!}
+```
+
+أين جاءت بيانات الضحية؟
+-----------------------
+
+هنا يأتي دور Request Smuggling.
+
+أنت جعلت `query=` غير مكتملة:
+
+```
+username=test&query=
+```
+
+وفي نفس الوقت قلت:
+
+```
+Content-Length: 500
+```
+
+فأصبح الـ Back-end يقول:
+
+> "ما زلت أنتظر بقية الـ 500 بايت."
+
+ثم جاء طلب الضحية:
+
+```
+GET /login.php?password=C4Ny0UsMu66L3
+```
+
+فالـ Back-end **خلط** بين الطلبين، واعتبر أن بداية طلب الضحية هي تكملة لقيمة `query`.
+
+فأصبح داخليًا كأنه:
+
+```
+username=test
+query=GET /login.php?password=C4Ny0UsMu66L3 ...
+```
   
 </details>
 
