@@ -1945,7 +1945,7 @@ SHIFT + ENTER
 
 * * * * *
 
-🧠 Summary: Bypassing Frontend Restrictions
+Summary: Bypassing Frontend Restrictions
 ===========================================
 
 الفكرة
