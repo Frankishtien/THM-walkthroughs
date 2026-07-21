@@ -1526,6 +1526,685 @@ Content-Length: 0
 
 
 
+<details>
+  <summary>HTTP/2 Request Tunneling</summary>
+
+
+Summary: Request Tunnelling vs Desync
+----------------------------------------
+
+-   في **Request Smuggling التقليدي (Desync)** الهجوم يعتمد على إن الـ Backend يستخدم **نفس الـ Connection لكل المستخدمين**.
+-   لما كل المستخدمين يكونوا على نفس الـ Backend Connection:
+    -   المهاجم يقدر يحقن Request مخفي.
+    -   الـ Backend ممكن يخلط بين Request المهاجم و Request مستخدم آخر.
+    -   النتيجة: التأثير على الضحايا.
+
+* * * * *
+
+-   بعض الـ Proxy implementations تعمل **Per-user Backend Connections**:
+    -   كل مستخدم له Connection منفصلة مع الـ Backend.
+    -   مثال:
+
+        ```
+        Attacker → Connection A → Backend
+
+        Victim   → Connection B → Backend
+        ```
+
+
+<img width="841" height="332" alt="image" src="https://github.com/user-attachments/assets/725c33b9-824f-4f11-b17d-5b3d2d54ac14" />
+
+
+
+-   في الحالة دي:
+    -   المهاجم لا يستطيع التأثير على Requests الخاصة بالمستخدمين الآخرين.
+    -   لأن مفيش Connection مشتركة بينهم.
+
+* * * * *
+
+Request Tunnelling
+------------------
+
+-   رغم عدم القدرة على مهاجمة مستخدمين آخرين، ما زال يمكن عمل Smuggling داخل **Connection المهاجم نفسه**.
+-   يعني:
+    -   بدل ما نخبي Request للضحية.
+    -   نخبي Request إضافية ونخليها تعدي من خلال الـ Frontend Proxy للـ Backend.
+-   لذلك يسمى:\
+    **Request Tunnelling**
+
+    لأنه يعمل كأنه نفق يسمح بتمرير Requests للـ Backend بطريقة غير متوقعة.
+
+* * * * *
+
+الفرق السريع:
+-------------
+
+| Desync / Request Smuggling | Request Tunnelling |
+| --- | --- |
+| يستهدف مستخدم آخر | يستهدف نفس اتصال المهاجم |
+| يحتاج Shared Backend Connection | لا يحتاج |
+| الهدف: خلط Requests بين المستخدمين | الهدف: تمرير Requests مخفية للـ Backend |
+
+* * * * *
+
+نقطة مهمة:
+----------
+
+في اللابات القادمة سيتم استخدام:
+
+-   **HAProxy قديم**
+-   فيه ثغرة **CVE-2019-19330**
+-   الثغرة تعتمد على **CRLF Injection**
+-   وتسمح بعمل Request Smuggling.
+
+
+
+
+
+  
+</details>
+
+
+
+
+
+<details>
+  <summary>HTTP/2 Request Tunneling: Leaking Internal Headers</summary>
+
+
+
+Summary: Leaking Internal Headers (Request Tunnelling)
+=========================================================
+
+1) الهدف من الهجوم
+------------------
+
+في Request Tunnelling، إحنا مش بنحاول نأثر على مستخدمين تانيين.
+
+هدفنا هنا:
+
+> معرفة الـ Headers الداخلية التي يضيفها الـ Frontend Proxy قبل إرسال الطلب للـ Backend.
+
+مثال:
+
+الـ Proxy يضيف:
+
+```
+X-Internal: secret
+```
+
+إحنا لا نراها، لكن الـ Backend يراها.
+
+* * * * *
+
+2) ليه نحتاج الـ Internal Headers؟
+==================================
+
+لو عايزين نعمل Request مخفي للـ Backend، ممكن الـ Backend يحتاج Headers معينة.
+
+لذلك نحتاج نعرف:
+
+-   ما هي الـ Headers التي يضيفها الـ Proxy؟
+-   أين يتم وضعها؟
+-   ما قيمتها؟
+
+* * * * *
+
+3) طريقة تسريب الـ Headers
+==========================
+
+نستغل خاصية في التطبيق:
+
+Endpoint:
+
+```
+POST /hello
+```
+
+يأخذ Parameter اسمه:
+
+```
+q
+```
+
+ويقوم بعكسه في الـ Response.
+
+مثال:
+
+Request:
+
+```
+POST /hello
+
+q=test
+```
+
+Response:
+
+```
+test
+```
+
+إذن نستخدمه ليطبع لنا الـ Headers السرية.
+
+
+
+<img width="1483" height="317" alt="image" src="https://github.com/user-attachments/assets/81158a7d-ff8e-4a8b-afd3-46c946b9969e" />
+
+
+
+* * * * *
+
+4) شكل الاتصال
+==============
+
+```
+Attacker
+    |
+    v
+Frontend Proxy (HAProxy)
+    |
+    v
+Backend
+```
+
+الـ Proxy يحول:
+
+```
+HTTP/2
+```
+
+إلى:
+
+```
+HTTP/1.1
+```
+
+ويضيف Headers داخلية أثناء التحويل.
+
+* * * * *
+
+5) مكان الثغرة
+==============
+
+نسخة HAProxy المستخدمة فيها:
+
+**CRLF Injection**
+
+يعني نستطيع إدخال:
+
+```
+\r\n
+```
+
+داخل قيمة Header.
+
+والـ CRLF معناها:
+
+-   `\r\n` = نزول سطر جديد.
+-   `\r\n\r\n` = نهاية الـ Headers وبداية الـ Body.
+
+* * * * *
+
+6) مكان الحقن
+=============
+
+نضيف Header نتحكم فيه:
+
+```
+Foo: bar
+```
+
+ثم نجعل قيمة Foo تحتوي على CRLF.
+
+بدل:
+
+```
+Foo: bar
+```
+
+تصبح القيمة:
+
+```
+bar
+Content-Length: 0
+
+POST /hello HTTP/1.1
+Host: MACHINE_IP:8100
+Content-Length: 300
+
+q=
+```
+
+
+<img width="1336" height="652" alt="image" src="https://github.com/user-attachments/assets/4ea38fa9-ccde-4afb-84ef-8ec9b06aa6ec" />
+
+
+
+
+* * * * *
+
+7) ماذا يحدث؟
+=============
+
+الـ Frontend يرى:
+
+Request واحد HTTP/2.
+
+لكن بعد التحويل، الـ Backend يراه كأنه:
+
+Request 1:
+----------
+
+```
+POST /hello HTTP/1.1
+Foo: bar
+Content-Length: 0
+
+```
+
+بسبب:
+
+```
+Content-Length: 0
+```
+
+ينتهي الطلب الأول.
+
+* * * * *
+
+Request 2:
+----------
+
+```
+POST /hello HTTP/1.1
+Host: MACHINE_IP:8100
+Content-Length: 300
+
+q=...
+```
+
+الـ Backend يعتبره Request جديد.
+
+* * * * *
+
+8) أين تذهب الـ Internal Headers؟
+=================================
+
+الـ Proxy يضيف Headers مثل:
+
+```
+X-Internal: secret
+```
+
+ونحن نجعلها تدخل في:
+
+```
+q=
+```
+
+لأن التطبيق يعكس قيمة q.
+
+فتظهر لنا في الـ Response.
+
+* * * * *
+
+9) لماذا نستخدم Content-Length؟
+===============================
+
+في الطلب الأول:
+---------------
+
+```
+Content-Length: 0
+```
+
+الهدف:
+
+إجبار الـ Backend على إنهاء الطلب الأول وعدم انتظار Body.
+
+* * * * *
+
+في الطلب الثاني:
+----------------
+
+```
+Content-Length: 300
+```
+
+الهدف:
+
+تحديد حجم البيانات التي نريد قراءتها.
+
+لو الرقم صغير:
+
+-   نحصل على جزء فقط من الـ Headers.
+
+لو الرقم كبير:
+
+-   الـ Connection قد ينتظر بيانات غير موجودة.
+
+* * * * *
+
+10) خطوات Burp باختصار
+======================
+
+1.  التقط Request الخاص بـ:
+
+```
+POST /hello
+```
+
+1.  أرسله إلى Repeater.
+2.  احذف الـ Body.
+3.  ضع:
+
+```
+Content-Length: 0
+```
+
+1.  أضف Header:
+
+```
+Foo: bar
+```
+
+1.  عدل قيمة Foo من Inspector.
+2.  أدخل CRLF باستخدام:
+
+```
+SHIFT + ENTER
+```
+
+1.  ضع الـ Payload داخل قيمة Foo.
+2.  أرسل الطلب مرتين بسرعة.
+
+
+
+
+
+
+
+
+<img width="1919" height="776" alt="image" src="https://github.com/user-attachments/assets/5d897f8b-e06f-4ef6-a30b-266ef090caa9" />
+
+<img width="1919" height="702" alt="image" src="https://github.com/user-attachments/assets/cbbd39b3-bc7a-43e5-9d50-46958afc1c78" />
+
+
+
+  
+</details>
+
+
+
+<details>
+  <summary>HTTP/2 Request Tunneling: Bypassing Frontend Restrictions</summary>
+
+
+.
+
+* * * * *
+
+🧠 Summary: Bypassing Frontend Restrictions
+===========================================
+
+الفكرة
+------
+
+بعض المواقع تحط الحماية على **Frontend Proxy** بدل الـ Backend.
+
+مثال:
+
+```
+/admin  ❌ ممنوع
+/hello  ✅ مسموح
+```
+
+يعني لو طلبت:
+
+```
+GET /admin
+```
+
+الـ Proxy يمنع الطلب قبل ما يوصل للـ Backend.
+
+* * * * *
+
+الهدف
+=====
+
+الوصول إلى:
+
+```
+/admin
+```
+
+بدون أن يعرف الـ Frontend Proxy.
+
+* * * * *
+
+الفكرة الأساسية
+===============
+
+نستخدم Resource مسموح مثل:
+
+```
+/hello
+```
+
+كغطاء (Cover).
+
+ونخفي داخله Request آخر إلى:
+
+```
+/admin
+```
+
+* * * * *
+
+كيف يتم ذلك؟
+============
+
+نستغل ثغرة:
+
+**CRLF Injection**
+
+داخل Header نتحكم فيه مثل:
+
+```
+Foo: bar
+```
+
+ونجعل قيمة الـ Header تحتوي على Request جديد.
+
+* * * * *
+
+ماذا يرى الـ Frontend؟
+======================
+
+يرى فقط:
+
+```
+POST /hello HTTP/2
+```
+
+فيقول:
+
+✅ الطلب مسموح.
+
+* * * * *
+
+ماذا يرى الـ Backend؟
+=====================
+
+بعد التحويل إلى HTTP/1.1 يرى:
+
+Request الأول
+-------------
+
+```
+POST /hello HTTP/1.1
+```
+
+ثم بسبب الـ CRLF يبدأ:
+
+Request الثاني
+--------------
+
+```
+GET /admin HTTP/1.1
+```
+
+فيتعامل معه كطلب مستقل.
+
+
+<img width="1187" height="652" alt="image" src="https://github.com/user-attachments/assets/4c9f416e-997e-4789-8d17-ee8337a52b90" />
+
+
+* * * * *
+
+لماذا يستخدم POST؟
+==================
+
+لأن:
+
+```
+GET
+```
+
+قد يتم تقديمه من الـ Cache الخاصة بالـ Proxy.
+
+وبالتالي قد لا يصل للـ Backend.
+
+أما:
+
+```
+POST
+```
+
+فعادة لا يتم Cache له.
+
+لذلك يصل دائمًا إلى الـ Backend.
+
+* * * * *
+
+لماذا نرسل الطلب مرتين؟
+=======================
+
+لأن الـ Request الثاني يكون غير مكتمل في البداية.
+
+الإرسال الأول:
+
+-   يضع الـ Request المخفي داخل الـ Connection.
+
+الإرسال الثاني:
+
+-   يجعل الـ Backend ينفذ الطلب ويرسل الرد الخاص بـ `/admin`.
+
+
+
+---
+
+
+```http
+bar
+Host: 10.112.149.110:8100
+
+GET /admin HTTP/1.1
+X: f
+```
+
+
+<img width="1916" height="696" alt="image" src="https://github.com/user-attachments/assets/e1e82f0c-57f4-402b-a3a4-e2d98c91198a" />
+
+
+
+
+
+
+  
+</details>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
