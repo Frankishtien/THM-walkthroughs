@@ -3066,6 +3066,7 @@ GET /private
 
 
 
+<img width="1519" height="434" alt="image" src="https://github.com/user-attachments/assets/2f7d3c3c-2242-49ec-9cfc-ee98b198719b" />
 
 
   
