@@ -1,7 +1,7 @@
 # Intro to Docker
 
 <img width="1902" height="373" alt="image" src="https://github.com/user-attachments/assets/910487df-0fe2-4b16-9183-f3dd17d41403" />
-
+ 
 ---
 
 <details>
