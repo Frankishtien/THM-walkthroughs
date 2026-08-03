@@ -1763,6 +1763,1037 @@ Browser
 <details>
   <summary>Intro to Docker Compose</summary>
 
+لحد دلوقتي كنت شغال على **Container واحد** في كل مرة.
+
+مثلاً:
+
+```
+docker run nginx
+```
+
+أو
+
+```
+docker run mysql
+```
+
+لكن في الواقع العملي التطبيقات مش بتبقى Container واحد.
+
+* * * * *
+
+المشكلة
+=======
+
+تخيل عندك موقع E-commerce.
+
+الموقع محتاج:
+
+```
+Apache Web Server
++
+MySQL Database
+```
+
+يعني محتاج Container للويب:
+
+```
+webserver
+```
+
+و Container للداتابيز:
+
+```
+database
+```
+
+* * * * *
+
+الرسم:
+
+```
+Browser
+    ↓
+Apache Container
+    ↓
+MySQL Container
+```
+
+* * * * *
+
+بدون Docker Compose
+===================
+
+لازم تعمل كل حاجة بنفسك:
+
+إنشاء Network:
+
+```
+docker network create ecommerce
+```
+
+* * * * *
+
+تشغيل Web Server:
+
+```
+docker run -d\
+--name webserver\
+--net ecommerce\
+-p 80:80\
+webserver
+```
+
+* * * * *
+
+تشغيل Database:
+
+```
+docker run -d\
+--name database\
+--net ecommerce\
+mysql
+```
+
+* * * * *
+
+كل مرة تعيد نفس الكلام.
+
+لو عندك:
+
+```
+Web
+Database
+Redis
+Nginx
+PHP
+```
+
+هتتعب 😅
+
+* * * * *
+
+الحل؟
+=====
+
+Docker Compose
+
+* * * * *
+
+فكر فيها كأنها:
+
+```
+docker run
+docker run
+docker run
+docker run
+```
+
+كلهم متجمعين في ملف واحد.
+
+* * * * *
+
+يعني بدل:
+
+```
+docker run ...
+docker run ...
+docker run ...
+```
+
+تكتب:
+
+```
+docker-compose up
+```
+
+وخلاص.
+
+* * * * *
+
+Docker Compose عبارة عن إيه؟
+============================
+
+ملف:
+
+```
+docker-compose.yml
+```
+
+بيوصف:
+
+```
+كل الـ Containers
+الـ Networks
+الـ Volumes
+الـ Ports
+```
+
+اللي مشروعك محتاجها.
+
+* * * * *
+
+مثال بسيط
+=========
+
+```
+version: '3.3'
+
+services:
+  web:
+    image: nginx
+
+  db:
+    image: mysql
+```
+
+* * * * *
+
+معناها:
+
+```
+شغل Container اسمها web
+من nginx image
+
+وشغل Container اسمها db
+من mysql image
+```
+
+* * * * *
+
+أوامر Docker Compose
+====================
+
+* * * * *
+
+تشغيل كل الخدمات
+----------------
+
+```
+docker-compose up
+```
+
+* * * * *
+
+بيعمل:
+
+```
+Build
+Create
+Start
+```
+
+لكل Containers.
+
+* * * * *
+
+إيقاف مؤقت
+----------
+
+```
+docker-compose stop
+```
+
+* * * * *
+
+معناها:
+
+```
+Containers موجودة
+لكن متوقفة
+```
+
+* * * * *
+
+تشغيل بعد التوقف
+----------------
+
+```
+docker-compose start
+```
+
+* * * * *
+
+معناها:
+
+```
+شغل الموجود
+متبنيش جديد
+```
+
+* * * * *
+
+حذف كل حاجة
+-----------
+
+```
+docker-compose down
+```
+
+* * * * *
+
+معناها:
+
+```
+Stop
+Delete Containers
+Delete Network
+```
+
+* * * * *
+
+Build فقط
+---------
+
+```
+docker-compose build
+```
+
+* * * * *
+
+هيبني Images فقط.
+
+* * * * *
+
+نبدأ نفهم ملف docker-compose.yml
+================================
+
+* * * * *
+
+version
+-------
+
+```
+version: '3.3'
+```
+
+* * * * *
+
+معناها:
+
+```
+صيغة Docker Compose المستخدمة
+```
+
+* * * * *
+
+غالباً مش هتشغل بالك بيها.
+
+* * * * *
+
+services
+========
+
+دي أهم كلمة.
+
+```
+services:
+```
+
+معناها:
+
+```
+الخدمات اللي هتشتغل
+```
+
+* * * * *
+
+بعدها نعرف كل Container.
+
+* * * * *
+
+مثال:
+
+```
+services:
+  web:
+```
+
+* * * * *
+
+يعني:
+
+```
+Container اسمها web
+```
+
+* * * * *
+
+build
+=====
+
+مثال:
+
+```
+build: ./web
+```
+
+* * * * *
+
+معناها:
+
+```
+Dockerfile موجود هنا
+```
+
+```
+./web/Dockerfile
+```
+
+* * * * *
+
+Docker يعمل:
+
+```
+docker build
+```
+
+تلقائياً.
+
+* * * * *
+
+image
+=====
+
+بديل لـ build.
+
+مثال:
+
+```
+image: mysql:latest
+```
+
+* * * * *
+
+معناها:
+
+```
+استخدم Image جاهزة
+```
+
+بدل ما تبنيها.
+
+* * * * *
+
+يعني:
+
+```
+web:
+  build: ./web
+```
+
+=
+
+```
+ابني Image
+```
+
+* * * * *
+
+أما:
+
+```
+database:
+  image: mysql:latest
+```
+
+=
+
+```
+استخدم Image جاهزة
+```
+
+* * * * *
+
+ports
+=====
+
+مثال:
+
+```
+ports:
+  - '80:80'
+```
+
+* * * * *
+
+زي:
+
+```
+docker run -p 80:80
+```
+
+* * * * *
+
+المعنى:
+
+```
+Host Port 80
+↓
+Container Port 80
+```
+
+* * * * *
+
+networks
+========
+
+مثال:
+
+```
+networks:
+  - ecommerce
+```
+
+* * * * *
+
+معناها:
+
+```
+الـ Container دي عضو في Network اسمها ecommerce
+```
+
+* * * * *
+
+وده يسمح للـ Containers تكلم بعض.
+
+* * * * *
+
+الرسم:
+
+```
+ecommerce network
+
+web
+ ↓↑
+database
+```
+
+* * * * *
+
+بدون Network:
+
+```
+web  X  database
+```
+
+* * * * *
+
+مش هيعرفوا يوصلوا لبعض.
+
+* * * * *
+
+environment
+===========
+
+دي متغيرات بيئة.
+
+مثال:
+
+```
+environment:
+  - MYSQL_DATABASE=ecommerce
+```
+
+* * * * *
+
+معناها:
+
+```
+اسم قاعدة البيانات
+ecommerce
+```
+
+* * * * *
+
+مثال:
+
+```
+- MYSQL_ROOT_PASSWORD=helloworld
+```
+
+* * * * *
+
+معناها:
+
+```
+باسورد root
+```
+
+* * * * *
+
+الملف كامل
+==========
+
+```
+version: '3.3'
+
+services:
+
+  web:
+    build: ./web
+
+    networks:
+      - ecommerce
+
+    ports:
+      - '80:80'
+
+  database:
+    image: mysql:latest
+
+    networks:
+      - ecommerce
+
+    environment:
+      - MYSQL_DATABASE=ecommerce
+      - MYSQL_USERNAME=root
+      - MYSQL_ROOT_PASSWORD=helloworld
+
+networks:
+  ecommerce:
+```
+
+  
+</details>
+
+
+
+<details>
+  <summary>Intro to the Docker Socket</summary>
+
+
+
+أول حاجة
+========
+
+لما تثبت Docker
+
+أنت مش بتثبت برنامج واحد.
+
+أنت بتثبت:
+
+```
+Docker Client
++
+Docker Server (Docker Daemon)
+```
+
+* * * * *
+
+Docker Client
+-------------
+
+ده اللي أنت بتتعامل معاه.
+
+لما تكتب:
+
+```
+docker ps
+```
+
+أو
+
+```
+docker run nginx
+```
+
+أنت بتكلم:
+
+```
+Docker Client
+```
+
+* * * * *
+
+Docker Server
+-------------
+
+اسمه غالبًا:
+
+```
+dockerd
+```
+
+وده اللي بينفذ الشغل الحقيقي.
+
+* * * * *
+
+الرسم:
+
+```
+أنت
+ ↓
+Docker Client
+ ↓
+Docker Server (dockerd)
+ ↓
+Containers
+Images
+Networks
+Volumes
+```
+
+* * * * *
+
+طب الاتنين بيكلموا بعض إزاي؟
+============================
+
+عن طريق:
+
+```
+Socket
+```
+
+* * * * *
+
+يعني إيه Socket؟
+----------------
+
+اعتبرها قناة اتصال.
+
+زي ماسورة بين برنامجين.
+
+* * * * *
+
+مثال بسيط:
+
+```
+Chrome
+   ↓
+Socket
+   ↓
+Web Server
+```
+
+* * * * *
+
+أو:
+
+```
+WhatsApp
+   ↓
+Socket
+   ↓
+WhatsApp Server
+```
+
+* * * * *
+
+في Linux هتلاقي Socket عبارة عن File.
+
+* * * * *
+
+Docker Socket
+=============
+
+غالبًا موجود هنا:
+
+```
+/var/run/docker.sock
+```
+
+* * * * *
+
+لو عملت:
+
+```
+ls -la /var/run/docker.sock
+```
+
+هتشوف حاجة شبه:
+
+```
+srw-rw----
+```
+
+الحرف:
+
+```
+s
+```
+
+معناه:
+
+```
+Socket
+```
+
+* * * * *
+
+ماذا يحدث عند:
+==============
+
+```
+docker run nginx
+```
+
+؟
+
+* * * * *
+
+أنت فعليًا مش بتكلم الـ Container.
+
+* * * * *
+
+العملية:
+
+```
+docker run nginx
+      ↓
+Docker Client
+      ↓
+docker.sock
+      ↓
+Docker Server
+      ↓
+Create Container
+      ↓
+Run Container
+```
+
+* * * * *
+
+يعني الـ Client مجرد رسول.
+
+* * * * *
+
+والـ Server هو اللي بينفذ.
+
+* * * * *
+
+ليه بيقول Docker Server عبارة عن API؟
+=====================================
+
+لأن الـ Server فاتح API.
+
+زي:
+
+```
+GET
+POST
+DELETE
+```
+
+* * * * *
+
+لما تعمل:
+
+```
+docker ps
+```
+
+فالـ Client فعليًا بيبعت Request للـ API.
+
+* * * * *
+
+والـ Server يرد:
+
+```
+Container 1
+Container 2
+Container 3
+```
+
+* * * * *
+
+عشان كده ممكن تستخدم curl
+=========================
+
+بدل:
+
+```
+docker ps
+```
+
+ممكن تكلم الـ API مباشرة.
+
+مثلاً:
+
+```
+curl --unix-socket /var/run/docker.sock\
+http://localhost/images/json
+```
+
+* * * * *
+
+وده هيجيب:
+
+```
+كل الـ Images
+```
+
+* * * * *
+
+يعني:
+
+```
+Docker CLI
+```
+
+مش الطريقة الوحيدة للتعامل مع Docker.
+
+* * * * *
+
+ممكن:
+
+```
+curl
+Postman
+Python Requests
+أي HTTP Client
+```
+
+* * * * *
+
+ليه ده مهم أمنيًا؟
+==================
+
+هنا الجزء الممتع 😈
+
+* * * * *
+
+لو حد قدر يوصل لـ:
+
+```
+/var/run/docker.sock
+```
+
+فهو تقريبًا بقى عنده تحكم كامل في Docker.
+
+* * * * *
+
+يعني يقدر:
+
+```
+List Containers
+Start Containers
+Stop Containers
+Delete Containers
+Create Containers
+Mount Filesystems
+```
+
+* * * * *
+
+ليه ده خطير جدًا؟
+=================
+
+تخيل Container فيها:
+
+```
+/var/run/docker.sock
+```
+
+ومتعملها Mount بالغلط:
+
+```
+docker run\
+-v /var/run/docker.sock:/var/run/docker.sock
+```
+
+* * * * *
+
+لو مهاجم دخل الـ Container.
+
+فهو يقدر يكلم Docker API.
+
+* * * * *
+
+ويعمل Container جديدة بصلاحيات عالية.
+
+* * * * *
+
+مثال مشهور جدًا:
+
+```
+docker run -it\
+-v /:/host\
+ubuntu
+```
+
+* * * * *
+
+المعنى:
+
+```
+اربط Root Filesystem بتاع الجهاز
+داخل Container
+```
+
+* * * * *
+
+بعدها المهاجم يقدر يشوف ملفات الجهاز نفسه.
+
+* * * * *
+
+عشان كده في الـ Pentest
+
+لو لقيت:
+
+```
+/var/run/docker.sock
+```
+
+موجودة ومكشوفة.
+
+بتبدأ تفكر فورًا في:
+
+```
+Docker Escape
+Privilege Escalation
+Host Compromise
+```
+
+* * * * *
+
+نقطة أخيرة
+==========
+
+التاسك بيقول:
+
+ممكن Docker Server يسمع على الشبكة.
+
+* * * * *
+
+بدل:
+
+```
+docker.sock
+```
+
+يبقى:
+
+```
+0.0.0.0:2375
+```
+
+مثلاً.
+
+* * * * *
+
+يعني أي جهاز يقدر يكلمه.
+
+* * * * *
+
+لو مش مؤمن كويس:
+
+```
+أي حد على الشبكة
+↓
+Docker API
+↓
+السيطرة على السيرفر
+```
+
+😬
+
+عشان كده هتلاقي في الـ Shodan أحيانًا سيرفرات فاتحة:
+
+```
+Docker Remote API
+```
+
+ودي من الحاجات اللي الأمنيين بيقلقوا منها جدًا.
 
 
   
@@ -1771,8 +2802,45 @@ Browser
 
 
 
+<details>
+  <summary>Practical</summary>
 
 
+```
+docker ps 
+```
+
+<img width="1024" height="168" alt="image" src="https://github.com/user-attachments/assets/05d7c33b-a3b2-4c55-a44b-e9cc1832c23d" />
+
+
+```
+cat dockerfile
+```
+
+
+<img width="993" height="273" alt="image" src="https://github.com/user-attachments/assets/ddbd4488-5aeb-4668-b2dc-2abf60fad511" />
+
+
+
+```
+docker run -d --name webserver-container -p 80:80 webserver
+```
+
+<img width="1024" height="288" alt="image" src="https://github.com/user-attachments/assets/873109c6-dd26-4471-ac79-909193bcd383" />
+
+
+## now visit 
+
+```
+https://10-114-133-58.reverse-proxy.cell-prod-eu-central-1c.vm.tryhackme.com/
+```
+
+
+<img width="1392" height="206" alt="image" src="https://github.com/user-attachments/assets/5f887045-9d71-4bc1-9b26-619ade0d878f" />
+
+
+  
+</details>
 
 
 
