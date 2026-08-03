@@ -359,6 +359,725 @@ docker image rm ubuntu:22.04
   <summary>Running Your First Container</summary>
 
 
+الصورة الكبيرة الأول
+====================
+
+إحنا اتفقنا:
+
+```
+Image = Blueprint
+Container = Running Instance
+```
+
+يعني لو عندك:
+
+```
+nginx image
+```
+
+فدي مجرد ملفات وتعليمات.
+
+لما تعمل:
+
+```
+docker run nginx
+```
+
+Docker بيقول:
+
+> هبني Container من الـ Image دي وأشغلها.
+
+* * * * *
+
+docker run
+==========
+
+الصيغة العامة:
+
+```
+docker run [OPTIONS] IMAGE_NAME [COMMAND]
+```
+
+مثال:
+
+```
+docker run ubuntu
+```
+
+Docker هيعمل Container من Ubuntu Image.
+
+* * * * *
+
+مثال عملي
+=========
+
+```
+docker run -it ubuntu /bin/bash
+```
+
+تعالى نفكها.
+
+* * * * *
+
+docker run
+----------
+
+يعني:
+
+```
+أنشئ وشغل Container
+```
+
+* * * * *
+
+-it
+---
+
+دي أهم Option للمبتدئين.
+
+مكونة من جزئين:
+
+### i
+
+Interactive
+
+يعني:
+
+```
+اسمحلي أتعامل مع الـ Container
+```
+
+* * * * *
+
+### t
+
+TTY
+
+يعني:
+
+```
+افتح Terminal
+```
+
+* * * * *
+
+لذلك:
+
+```
+-it
+```
+
+=
+
+```
+افتحلي Terminal أتعامل منه مع الـ Container
+```
+
+* * * * *
+
+ubuntu
+------
+
+اسم الـ Image.
+
+* * * * *
+
+/bin/bash
+---------
+
+الأمر اللي هيتنفذ جوه الـ Container.
+
+يعني:
+
+```
+شغل Bash Shell
+```
+
+* * * * *
+
+لذلك:
+
+```
+docker run -it ubuntu /bin/bash
+```
+
+معناها:
+
+```
+1\. ابني Container من Ubuntu
+2. افتح Bash
+3. اديني Terminal أتفاعل معاه
+```
+
+* * * * *
+
+هتشوف:
+
+```
+root@30eff5ed7492:/#
+```
+
+* * * * *
+
+هو الرقم ده إيه؟
+================
+
+```
+30eff5ed7492
+```
+
+ده:
+
+```
+Container ID
+```
+
+كل Container ليه ID خاص.
+
+زي:
+
+```
+VM ID
+```
+
+تقريبًا.
+
+* * * * *
+
+Option رقم 1
+============
+
+-d
+--
+
+Detached Mode
+
+مثال:
+
+```
+docker run -d nginx
+```
+
+* * * * *
+
+بدل ما يفتحلك Terminal
+
+هيشتغل في الخلفية.
+
+زي:
+
+```
+Windows Service
+```
+
+تقريبًا.
+
+* * * * *
+
+مفيد جدًا مع:
+
+```
+Web Servers
+Databases
+APIs
+```
+
+* * * * *
+
+Option رقم 2
+============
+
+--name
+------
+
+افترض عملت:
+
+```
+docker run nginx
+```
+
+Docker هيطلع اسم غريب:
+
+```
+happy_panda
+angry_cat
+```
+
+أسماء عشوائية.
+
+* * * * *
+
+بدل كده:
+
+```
+docker run --name myweb nginx
+```
+
+هيبقى الاسم:
+
+```
+myweb
+```
+
+* * * * *
+
+أريح بكتير.
+
+* * * * *
+
+Option رقم 3
+============
+
+--rm
+----
+
+مهمة جدًا.
+
+مثال:
+
+```
+docker run --rm ubuntu
+```
+
+* * * * *
+
+معناها:
+
+```
+لما الـ Container يقفل
+امسحه تلقائياً
+```
+
+* * * * *
+
+بدونها:
+
+```
+Container
+↓
+يقفل
+↓
+يفضل موجود
+```
+
+* * * * *
+
+معها:
+
+```
+Container
+↓
+يقفل
+↓
+يتحذف
+```
+
+* * * * *
+
+Option رقم 4
+============
+
+-p
+--
+
+دي مهمة جدًا.
+
+* * * * *
+
+تخيل:
+
+جوه الـ Container
+
+في Web Server شغال على:
+
+```
+Port 80
+```
+
+لكن جهازك مش شايفه.
+
+* * * * *
+
+لازم نربط Port من جهازك بPort من الـ Container.
+
+* * * * *
+
+مثال:
+
+```
+docker run -p 8080:80 nginx
+```
+
+معناها:
+
+```
+Host Port = 8080
+Container Port = 80
+```
+
+* * * * *
+
+الرسم:
+
+```
+Browser
+   ↓
+localhost:8080
+   ↓
+Docker
+   ↓
+Container:80
+```
+
+* * * * *
+
+لذلك:
+
+لو فتحت:
+
+```
+http://localhost:8080
+```
+
+هتشوف موقع Nginx.
+
+* * * * *
+
+ليه مكتوبة كده؟
+---------------
+
+```
+8080:80
+```
+
+الصيغة:
+
+```
+Host:Container
+```
+
+* * * * *
+
+يعني:
+
+```
+9999:80
+```
+
+=
+
+```
+Host Port 9999
+→
+Container Port 80
+```
+
+* * * * *
+
+Option رقم 5
+============
+
+-v
+--
+
+Volume
+
+دي من أهم الحاجات في Docker.
+
+* * * * *
+
+تخيل عندك ملف:
+
+```
+/home/user/index.html
+```
+
+وعايز الـ Container يشوفه.
+
+* * * * *
+
+تعمل:
+
+```
+docker run -v /home/user:/app nginx
+```
+
+* * * * *
+
+المعنى:
+
+```
+Host
+/home/user
+
+↓
+
+Container
+/app
+```
+
+* * * * *
+
+أي ملف تحطه هنا:
+
+```
+/home/user
+```
+
+هيظهر هنا:
+
+```
+/app
+```
+
+* * * * *
+
+كأنك عملت:
+
+```
+Shared Folder
+```
+
+بين الجهاز والـ Container.
+
+* * * * *
+
+وده مهم جدًا مع:
+
+```
+Logs
+Databases
+Configs
+Source Code
+```
+
+* * * * *
+
+docker ps
+=========
+
+بعد ما تشغل Container
+
+عايز تعرف إيه اللي شغال.
+
+* * * * *
+
+تكتب:
+
+```
+docker ps
+```
+
+* * * * *
+
+مثال:
+
+```
+CONTAINER ID   IMAGE
+a913a8f6e30f   nginx
+```
+
+* * * * *
+
+يعني:
+
+```
+في Container شغال
+```
+
+* * * * *
+
+المعلومات المهمة
+================
+
+CONTAINER ID
+------------
+
+```
+a913a8f6e30f
+```
+
+رقم مميز للـ Container.
+
+* * * * *
+
+IMAGE
+-----
+
+```
+nginx
+```
+
+اتبنى من أي Image.
+
+* * * * *
+
+STATUS
+------
+
+مثلاً:
+
+```
+Up 3 days
+```
+
+يعني:
+
+```
+شغال من 3 أيام
+```
+
+* * * * *
+
+PORTS
+-----
+
+مثلاً:
+
+```
+0.0.0.0:8000->8000/tcp
+```
+
+يعني:
+
+```
+Host 8000
+↓
+Container 8000
+```
+
+* * * * *
+
+NAMES
+-----
+
+اسم الـ Container.
+
+* * * * *
+
+docker ps -a
+============
+
+فرق مهم جدًا.
+
+* * * * *
+
+docker ps
+---------
+
+يعرض:
+
+```
+Running Containers Only
+```
+
+* * * * *
+
+docker ps -a
+------------
+
+يعرض:
+
+```
+Running + Stopped Containers
+```
+
+* * * * *
+
+مثال:
+
+```
+Container A (Running)
+Container B (Stopped)
+Container C (Stopped)
+```
+
+* * * * *
+
+```
+docker ps
+```
+
+هيظهر:
+
+```
+A
+```
+
+بس.
+
+* * * * *
+
+```
+docker ps -a
+```
+
+هيظهر:
+
+```
+A
+B
+C
+```
+
+
+----
+
+| الأمر                                | وظيفته                   |
+| ------------------------------------ | ------------------------ |
+| `docker run image`                   | تشغيل Container          |
+| `docker run -it image /bin/bash`     | فتح Shell داخل Container |
+| `docker run -d image`                | تشغيل بالخلفية           |
+| `docker run --name myapp image`      | تسمية Container          |
+| `docker run --rm image`              | حذف تلقائي بعد الإغلاق   |
+| `docker run -p 8080:80 image`        | ربط Ports                |
+| `docker run -v host:container image` | مشاركة ملفات             |
+| `docker ps`                          | عرض الشغال فقط           |
+| `docker ps -a`                       | عرض الكل                 |
+
+
+----
+
+```
+docker run --rm
+        ↓
+يحذف Container فقط
+
+docker image rm
+        ↓
+يحذف Image
+```
+
+
+
+
+طب لو عاوز أشغل Container قديم؟
+
+أولًا اعرضه:
+
+```
+docker ps -a
+```
+
+مثلاً:
+
+```
+CONTAINER ID   NAMES
+111111111111   myubuntu
+```
+
+شغله بـ:
+
+```
+docker start myubuntu
+```
+
+أو:
+
+```
+docker start 111111111111
+```
+
 
 
   
@@ -374,8 +1093,680 @@ docker image rm ubuntu:22.04
 
 
 
+<details>
+  <summary>Intro to Dockerfiles</summary>
 
 
+المشكلة اللي Dockerfile بيحلها
+==============================
+
+تخيل كل مرة عاوز تعمل Ubuntu Container لازم:
+
+```
+docker run -it ubuntu /bin/bash
+apt update
+apt install apache2
+touch test.txt
+mkdir app
+...
+```
+
+كل مرة تعيد نفس الخطوات 😑
+
+Docker قال:
+
+> اكتب الخطوات مرة واحدة في ملف اسمه Dockerfile وأنا هبني Image جاهزة.
+
+* * * * *
+
+Dockerfile عبارة عن إيه؟
+========================
+
+ملف نصي عادي:
+
+```
+FROM ubuntu:22.04
+
+RUN apt update
+
+RUN apt install apache2 -y
+```
+
+كأنك بتكتب Recipe.
+
+* * * * *
+
+الفرق بين Dockerfile و Image
+============================
+
+```
+Dockerfile
+      ↓
+docker build
+      ↓
+Image
+      ↓
+docker run
+      ↓
+Container
+```
+
+احفظ السلسلة دي لأنها قلب Docker كله.
+
+* * * * *
+
+أول Instruction
+===============
+
+FROM
+----
+
+لازم أي Dockerfile يبدأ بيها.
+
+مثال:
+
+```
+FROM ubuntu:22.04
+```
+
+معناها:
+
+```
+ابدأ من Ubuntu 22.04
+```
+
+يعني أساس الـ Image هيبقى Ubuntu.
+
+* * * * *
+
+مثال:
+
+```
+FROM nginx
+```
+
+يبقى الأساس:
+
+```
+Nginx Image
+```
+
+* * * * *
+
+RUN
+===
+
+شغل أمر أثناء بناء الـ Image.
+
+مثال:
+
+```
+RUN whoami
+```
+
+أو
+
+```
+RUN apt update
+```
+
+أو
+
+```
+RUN touch test.txt
+```
+
+* * * * *
+
+يعني Docker أثناء البناء ينفذ الأمر.
+
+* * * * *
+
+WORKDIR
+=======
+
+زي:
+
+```
+cd
+```
+
+في Linux.
+
+مثال:
+
+```
+WORKDIR /
+```
+
+معناها:
+
+```
+روح للـ Root Directory
+```
+
+* * * * *
+
+مثال:
+
+```
+WORKDIR /app
+```
+
+كأنك عملت:
+
+```
+cd /app
+```
+
+* * * * *
+
+COPY
+====
+
+نسخ ملفات من جهازك للـ Container.
+
+مثال:
+
+```
+COPY index.html /var/www/html
+```
+
+معناها:
+
+```
+Host
+index.html
+
+↓
+
+Container
+/var/www/html/index.html
+```
+
+* * * * *
+
+CMD
+===
+
+دي مهمة جدًا.
+
+بتحدد:
+
+> لما الـ Container يشتغل يعمل إيه؟
+
+* * * * *
+
+مثال:
+
+```
+CMD ["bash"]
+```
+
+لما الـ Container يبدأ:
+
+```
+يشغل bash
+```
+
+* * * * *
+
+مثال:
+
+```
+CMD ["apache2ctl","-D","FOREGROUND"]
+```
+
+يعني:
+
+```
+شغل Apache
+```
+
+* * * * *
+
+EXPOSE
+======
+
+دي مش بتفتح البورت.
+
+ركز في النقطة دي.
+
+ناس كتير بتتلخبط.
+
+* * * * *
+
+```
+EXPOSE 80
+```
+
+معناها:
+
+```
+هذا التطبيق يستخدم Port 80
+```
+
+بس.
+
+* * * * *
+
+لسه لازم تعمل:
+
+```
+docker run -p 80:80 image
+```
+
+عشان تقدر توصله.
+
+* * * * *
+
+أول Dockerfile
+==============
+
+```
+FROM ubuntu:22.04
+
+WORKDIR /
+
+RUN touch helloworld.txt
+```
+
+* * * * *
+
+تعالى نمشي سطر سطر.
+
+* * * * *
+
+السطر الأول
+-----------
+
+```
+FROM ubuntu:22.04
+```
+
+جيب Ubuntu.
+
+* * * * *
+
+السطر الثاني
+------------
+
+```
+WORKDIR /
+```
+
+ادخل Root Directory.
+
+* * * * *
+
+السطر الثالث
+------------
+
+```
+RUN touch helloworld.txt
+```
+
+أنشئ ملف:
+
+```
+/helloworld.txt
+```
+
+* * * * *
+
+النتيجة؟
+
+Image جديدة فيها Ubuntu ومعاها ملف:
+
+```
+helloworld.txt
+```
+
+* * * * *
+
+docker build
+============
+
+بعد ما كتبنا Dockerfile.
+
+عاوزين نحوله Image.
+
+* * * * *
+
+الأمر:
+
+```
+docker build -t helloworld .
+```
+
+* * * * *
+
+تعالى نفكها.
+
+* * * * *
+
+docker build
+------------
+
+ابني Image.
+
+* * * * *
+
+-t
+--
+
+Tag
+
+يعني:
+
+```
+سمي الـ Image
+```
+
+* * * * *
+
+helloworld
+----------
+
+اسم الـ Image.
+
+* * * * *
+
+.
+
+دي مهمة جدًا.
+
+معناها:
+
+```
+ابحث عن Dockerfile هنا
+```
+
+في الـ Current Directory.
+
+* * * * *
+
+ماذا يحدث أثناء البناء؟
+=======================
+
+Docker يقرأ الملف.
+
+* * * * *
+
+```
+FROM ubuntu
+```
+
+ينزل Ubuntu.
+
+* * * * *
+
+```
+WORKDIR /
+```
+
+يضبط الـ Directory.
+
+* * * * *
+
+```
+RUN touch helloworld.txt
+```
+
+ينشئ الملف.
+
+* * * * *
+
+ثم ينتج Image.
+
+* * * * *
+
+ليه ظهر Ubuntu و Helloworld؟
+============================
+
+لأن:
+
+```
+helloworld
+```
+
+مبنية فوق:
+
+```
+ubuntu
+```
+
+* * * * *
+
+الرسم:
+
+```
+ubuntu image
+      ↓
+add helloworld.txt
+      ↓
+helloworld image
+```
+
+* * * * *
+
+Layer Concept
+=============
+
+دي أهم فكرة في Docker.
+
+* * * * *
+
+كل Instruction تقريبًا:
+
+```
+RUN
+COPY
+WORKDIR
+```
+
+بتنشئ Layer.
+
+* * * * *
+
+مثال:
+
+```
+FROM ubuntu
+RUN apt update
+RUN apt install apache2
+RUN apt install net-tools
+```
+
+يبقى:
+
+```
+Layer 1
+FROM
+
+Layer 2
+apt update
+
+Layer 3
+apache2
+
+Layer 4
+net-tools
+```
+
+* * * * *
+
+كل Layer:
+
+```
+وقت
+مساحة
+حجم
+```
+
+* * * * *
+
+تحسين الأداء
+============
+
+بدل:
+
+```
+RUN apt update
+RUN apt install apache2
+RUN apt install net-tools
+```
+
+نعمل:
+
+```
+RUN apt update &&\
+    apt install apache2 -y &&\
+    apt install net-tools -y
+```
+
+* * * * *
+
+كده بقى:
+
+```
+Layer واحدة
+```
+
+بدل:
+
+```
+3 Layers
+```
+
+* * * * *
+
+أسرع وأصغر.
+
+* * * * *
+
+مثال Apache Web Server
+======================
+
+```
+FROM ubuntu:22.04
+
+RUN apt-get update -y
+
+RUN apt-get install apache2 -y
+
+EXPOSE 80
+
+CMD ["apache2ctl","-D","FOREGROUND"]
+```
+
+* * * * *
+
+ترجمتها بالعربي:
+
+```
+1\. هات Ubuntu
+2. اعمل Update
+3. ثبت Apache
+4. التطبيق بيستخدم Port 80
+5. لما Container يشتغل شغل Apache
+```
+
+* * * * *
+
+نبنيها:
+
+```
+docker build -t webserver .
+```
+
+* * * * *
+
+نشغلها:
+
+```
+docker run -d --name webserver -p 80:80 webserver
+```
+
+* * * * *
+
+تعالى نفك الأمر ده.
+
+```
+-d
+```
+
+خلفية.
+
+* * * * *
+
+```
+--name webserver
+```
+
+اسم الـ Container.
+
+* * * * *
+
+```
+-p 80:80
+```
+
+اربط:
+
+```
+Host 80
+↓
+Container 80
+```
+
+* * * * *
+
+```
+webserver
+```
+
+اسم الـ Image.
+
+* * * * *
+
+الرسم النهائي:
+
+```
+Dockerfile
+      ↓
+docker build
+      ↓
+webserver Image
+      ↓
+docker run
+      ↓
+webserver Container
+      ↓
+Apache Running
+      ↓
+Browser
+```
+
+
+  
+</details>
+
+
+
+
+
+
+
+
+
+<details>
+  <summary>Intro to Docker Compose</summary>
+
+
+
+  
+</details>
 
 
 
