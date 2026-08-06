@@ -1422,7 +1422,241 @@ echo "10.200.70.201 ntlmauth.za.tryhackme.com" >> /etc/hosts
 
 
 
+LDAP Bind Credentials & LDAP Pass-back Attack
+=============================================
 
+أولًا: ليه الـ Application محتاج LDAP؟
+--------------------------------------
+
+تخيل عندك Application أو Printer أو GitLab.
+
+المستخدم يعمل Login.
+
+التطبيق محتاج يعرف:
+
+> هل اليوزر ده موجود في الـ Active Directory؟
+
+التطبيق بيستخدم بروتوكول اسمه:
+
+```
+LDAP
+```
+
+عشان يسأل الـ Active Directory.
+
+* * * * *
+
+ثانيًا: Service Account
+-----------------------
+
+التطبيق ميقدرش يكلم الـ AD بدون Authentication.
+
+لذلك الشركة تعمل Account مخصوص للتطبيق.
+
+مثال:
+
+```
+Username: svcLDAP
+Password: password11
+```
+
+وده اسمه:
+
+```
+Service Account
+```
+
+مش Account لموظف، لكن للتطبيق.
+
+* * * * *
+
+ثالثًا: الطابعة بتعمل إيه؟
+--------------------------
+
+الطابعة تحتفظ بإعدادات زي:
+
+```
+LDAP Server = THMDC.za.tryhackme.com
+Username = svcLDAP
+Password = ********
+```
+
+كل مرة تحتاج تتحقق من مستخدم، تعمل Login باستخدام الـ Service Account.
+
+* * * * *
+
+فين المشكلة؟
+============
+
+إحنا مش شايفين الباسورد.
+
+لكن نقدر نغير:
+
+```
+LDAP Server
+```
+
+* * * * *
+
+بدل:
+
+```
+THMDC.za.tryhackme.com
+```
+
+نحطه:
+
+```
+IP جهازنا
+```
+
+فتبقى الطابعة بتكلم جهازنا بدل الـ Domain Controller.
+
+* * * * *
+
+ليه الـ Netcat لوحده مش كفاية؟
+==============================
+
+لأن الطابعة أول ما تتصل، بتسأل:
+
+> إنت LDAP Server؟
+
+> بتدعم Authentication إيه؟
+
+الـ Netcat مجرد Listener.
+
+مش هيعرف يرد.
+
+فالطابعة تقفل الاتصال.
+
+* * * * *
+
+الحل
+====
+
+نشغل:
+
+```
+OpenLDAP
+```
+
+ونخليه Rogue LDAP Server.
+
+* * * * *
+
+ليه عدلنا إعدادات OpenLDAP؟
+---------------------------
+
+عشان نخليه يقول للطابعة:
+
+```
+أنا بدعم:
+
+PLAIN
+LOGIN
+```
+
+فقط.
+
+* * * * *
+
+بدل:
+
+```
+Kerberos
+NTLM
+SASL
+```
+
+* * * * *
+
+ليه PLAIN مهم؟
+==============
+
+لأن الطابعة هتبعت:
+
+```
+Username
+Password
+```
+
+بشكل واضح (Plain Text).
+
+وده اللي إحنا عايزينه.
+
+* * * * *
+
+tcpdump عمل إيه؟
+================
+
+بعد ما الطابعة بعتت الـ Credentials.
+
+احنا شغلنا:
+
+```
+tcpdump
+```
+
+عشان يقرأ الباكتس.
+
+فنشوف:
+
+```
+za.tryhackme.com\svcLDAP
+password11
+```
+
+* * * * *
+
+ليه اسمه LDAP Pass-back؟
+========================
+
+لأن الطبيعي:
+
+```
+Printer
+    │
+    ▼
+Domain Controller
+```
+
+لكن إحنا غيرنا الـ LDAP Server إلى جهازنا.
+
+فبقت:
+
+```
+Printer
+    │
+    ▼
+Attacker
+```
+
+فالـ Credentials "رجعت" للمهاجم بدل ما تروح للـ Domain Controller.
+
+* * * * *
+
+الهجوم في صورة واحدة
+====================
+
+```
+Application/Printer
+        │
+        │ يستخدم Service Account
+        ▼
+ Active Directory (LDAP)
+```
+
+⬇️ المهاجم يغير LDAP Server
+
+```
+Application/Printer
+        │
+        ▼
+Rogue LDAP Server (Attacker)
+        │
+        ▼
+Username + Password
+```
 
 
 
