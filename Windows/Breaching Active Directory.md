@@ -1666,11 +1666,152 @@ Username + Password
 
 
 
+<details>
+  <summary>practical</summary>
+
+
+
+## download OpenLDAP 
+
+```
+sudo apt update
+sudo apt install -y slapd ldap-utils
+```
+
+
+## prepaire slapd
+
+
+```
+sudo dpkg-reconfigure -p low slapd
+```
+
+```
+Omit OpenLDAP server configuration?  -> No
+DNS domain name                     -> za.tryhackme.com
+Organization name                   -> za.tryhackme.com
+Administrator password              -> any password you wnat
+Database backend                    -> MDB
+Remove database when purged?        -> No
+Move old database?                  -> Yes
+```
+
+
+<img width="1538" height="752" alt="image" src="https://github.com/user-attachments/assets/9919e843-be8c-4881-8371-059e650f7ad3" />
+
+---
+
+## create LDIF file
+
+```
+nano olcSaslSecProps.ldif
+```
+
+```
+dn: cn=config
+replace: olcSaslSecProps
+olcSaslSecProps: noanonymous,minssf=0,passcred
+```
+
+
+Why did the lab environment make this configuration change?
+----------------------------
+
+By default, OpenLDAP enforces a policy of:
+
+```
+minssf=128
+```
+
+This means the connection must be encrypted (via TLS/SSL) before allowing:
+
+-   PLAIN
+-   LOGIN
+
+However, the lab aims to simulate an old or misconfigured Domain Controller that permits NTLM authentication without TLS.
+
+So, we set:
+
+```
+minssf=0
+```
+
+This means:
+
+> Allow Simple Bind even if the connection is unencrypted.
+
+This is what enables the lab tools to function.
+
+
+## apply change
+
+```
+sudo ldapmodify -Y EXTERNAL -H ldapi:// -f ./olcSaslSecProps.ldif
+sudo service slapd restart
+```
+
+## check chanes 
+
+```
+ldapsearch -H ldap:// -x -LLL -s base -b "" supportedSASLMechanisms
+```
+
+<img width="1342" height="243" alt="image" src="https://github.com/user-attachments/assets/8f7d796e-6a0a-4c06-9088-721d86fc2b31" />
+
+> ## the fucken lab have Differences between AttackBox/OpenLDAP versions
+> we should see just : `LOGIN`,`PLAIN`
+
+## open TCPDUMP
+
+```
+sudo tcpdump -A -i breachad tcp port 389
+```
+
+## now open send test of printer 
+
+
+```
+echo "10.200.70.201 printer.za.tryhackme.com" >> /etc/hosts
+```
+
+**`open`**
+```
+http://printer.za.tryhackme.com/settings.aspx
+```
+
+<img width="1373" height="435" alt="image" src="https://github.com/user-attachments/assets/0c643e33-650a-475a-864c-7fb0008631ee" />
+
+## change server to our ip and click test settings
+
+<img width="1103" height="364" alt="image" src="https://github.com/user-attachments/assets/c4821900-6ed7-4800-8223-c1f3c527f11f" />
+
+## check tcpdump 
+
+
+# 🙂
+
+  
+</details>
+
+
+
+----
+
+
+<details>
+  <summary>Authentication Relays</summary>
 
 
 
 
 
+
+
+
+
+
+  
+</details>
 
 
 
