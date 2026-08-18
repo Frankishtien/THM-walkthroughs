@@ -242,7 +242,7 @@ Safe/helpful answers get rewarded
 Model learns those patterns
 ```
 
-فالموديل بيتعلم:
+فالموديل بيتعلم :
 
 > "في النوع ده من الأسئلة، الأفضل إني أرفض."
 
